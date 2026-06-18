@@ -26,10 +26,18 @@ npm run dev            # Next.js на :3000
 ```bash
 git pull
 npm install
+npx playwright install --with-deps chromium   # браузер для скрапера (Шаг 2), первый раз
 npm run build
 pm2 start deploy/ecosystem.config.js   # первый раз
 pm2 restart all                        # последующие
 ```
+
+### Скрапер (Шаг 2)
+
+`POST http://127.0.0.1:8080/scrape` с заголовком `x-scraper-key: $SCRAPER_KEY` и телом
+`{"url":"https://..."}`. Слушает только localhost. Возвращает desktop+mobile скриншоты
+(base64 jpeg), отрисованный и сырой HTML, извлечённые данные и AEO-сигналы. SSRF-защита,
+очередь по одной странице, мягкие ошибки (см. `lib/scrape-types.ts`).
 
 ## Проверка Шага 1
 
