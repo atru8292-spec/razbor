@@ -1,0 +1,38 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# next.js
+/.next/
+/out/
+next-env.d.ts
+
+# production
+/build
+/dist
+
+# env — НИКОГДА не коммитим (раздел 14 ТЗ: ключи только на сервере)
+.env
+.env.local
+.env.*.local
+
+# артефакты аудита (скриншоты, pdf) — не в репо
+/artifacts
+/tmp
+*.pdf
+
+# logs
+*.log
+npm-debug.log*
+.pm2/
+
+# os / editor
+.DS_Store
+*.swp
+.vscode/
+.idea/
+
+# playwright (ставится на Шаге 2)
+/playwright-report
+/test-results

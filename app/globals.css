@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Базовые токены палитры (docs/DESIGN.md). Полная дизайн-система — Шаг 7. */
+:root {
+  --oxblood: #4e0000;
+  --espresso: #362017;
+  --paper: #faf5e7;
+  --dusty-blue: #a9bbd1;
+  --navy: #263650;
+}
+
+body {
+  background: var(--paper);
+  color: var(--espresso);
+  font-family: var(--font-manrope), system-ui, sans-serif;
+}
