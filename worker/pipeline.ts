@@ -3,7 +3,7 @@ import sharp from "sharp";
 import { scrape } from "../lib/scraper-client";
 import { classifySite } from "../lib/site-type";
 import { getPageSpeed } from "../lib/pagespeed";
-import { getOpenAI, extractJson } from "../lib/openai";
+import { createJsonResponse, extractJson } from "../lib/openai";
 import { AUDIT_SYSTEM_PROMPT, buildUserText, parseAuditResult, type PromptContext } from "../lib/audit-prompt";
 import { env } from "../lib/env";
 import { config } from "../lib/config";
@@ -39,29 +39,14 @@ async function resizeForVision(base64: string, width: number): Promise<VisionSho
 
 async function callVision(ctx: PromptContext, desktop: VisionShot, mobile: VisionShot) {
   const userText = buildUserText(ctx);
-  const messages = [
-    { role: "system" as const, content: AUDIT_SYSTEM_PROMPT },
-    {
-      role: "user" as const,
-      content: [
-        { type: "text" as const, text: userText },
-        { type: "image_url" as const, image_url: { url: `data:image/jpeg;base64,${desktop.base64}`, detail: "high" as const } },
-        { type: "image_url" as const, image_url: { url: `data:image/jpeg;base64,${mobile.base64}`, detail: "high" as const } },
-      ],
-    },
-  ];
-
   let lastErr: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const resp = await getOpenAI().chat.completions.create({
+    const { text, usage } = await createJsonResponse({
       model: env.OPENAI_VISION_MODEL,
-      messages,
-      response_format: { type: "json_object" },
+      system: AUDIT_SYSTEM_PROMPT,
+      userText,
+      imagesB64: [desktop.base64, mobile.base64],
     });
-    const text = resp.choices[0]?.message?.content ?? "";
-    const usage = resp.usage
-      ? { prompt: resp.usage.prompt_tokens ?? 0, completion: resp.usage.completion_tokens ?? 0 }
-      : null;
     try {
       const result = parseAuditResult(extractJson(text));
       return { result, usage };

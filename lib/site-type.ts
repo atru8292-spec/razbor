@@ -1,6 +1,6 @@
 // Определение типа сайта и ниши лёгкой моделью (раздел 4 ТЗ). Некритично:
 // при сбое возвращаем дефолт, аудит продолжается (тип влияет только на лензу).
-import { getOpenAI, extractJson } from "./openai";
+import { createJsonResponse, extractJson } from "./openai";
 import { env } from "./env";
 import type { ExtractedData } from "./scrape-types";
 
@@ -31,16 +31,13 @@ export async function classifySite(url: string, e: ExtractedData): Promise<SiteC
       `Текст (фрагмент): ${e.visibleText.slice(0, 1500)}`,
     ].join("\n");
 
-    const resp = await getOpenAI().chat.completions.create({
+    const { text } = await createJsonResponse({
       model: env.OPENAI_LIGHT_MODEL,
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: input },
-      ],
-      response_format: { type: "json_object" },
+      system: SYSTEM,
+      userText: input,
     });
 
-    const parsed = extractJson(resp.choices[0]?.message?.content ?? "{}") as Partial<SiteClassification>;
+    const parsed = extractJson(text || "{}") as Partial<SiteClassification>;
     const site_type = TYPES.includes(parsed.site_type as SiteType) ? (parsed.site_type as SiteType) : "leadgen";
     return { site_type, niche: typeof parsed.niche === "string" ? parsed.niche : null };
   } catch (err) {
