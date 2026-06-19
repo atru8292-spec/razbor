@@ -139,7 +139,7 @@ function ExpertCta() {
         rel="noopener"
         className="mt-5 inline-block rounded-md bg-oxblood px-7 py-3 font-display text-sm font-semibold uppercase tracking-wide text-paper transition hover:opacity-90"
       >
-        Написать эксперту
+        Обсудить редизайн
       </a>
     </section>
   );

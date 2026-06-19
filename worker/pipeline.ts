@@ -25,7 +25,12 @@ export interface CompetitorShot {
 
 export interface PipelineOutput {
   result: AuditResult;
-  screenshots: { desktop: VisionShot; mobile: VisionShot; competitors: { url: string; name: string; base64: string }[] };
+  screenshots: {
+    desktop: VisionShot;
+    mobile: VisionShot;
+    competitors: { url: string; name: string; base64: string }[];
+    fragments: { base64: string }[];
+  };
   siteType: string;
   usage: { prompt: number; completion: number } | null;
 }
@@ -43,6 +48,29 @@ async function resizeForVision(base64: string, width: number, maxHeight: number 
     meta = await sharp(buf).metadata();
   }
   return { base64: buf.toString("base64"), width: meta.width ?? width, height: meta.height ?? 0 };
+}
+
+/** Фрагменты десктоп-скрина для аннотации в выдаче: верх + середина (Шаг 10). */
+async function buildFragments(fullB64: string): Promise<{ base64: string }[]> {
+  const W = config.visionImage.desktopWidth;
+  const Q = config.visionImage.jpegQuality;
+  const FRAG_H = 2200;
+  const resized = await sharp(Buffer.from(fullB64, "base64")).resize({ width: W, withoutEnlargement: true }).jpeg({ quality: Q }).toBuffer();
+  const meta = await sharp(resized).metadata();
+  const H = meta.height ?? 0;
+  const w = meta.width ?? W;
+  const out: { base64: string }[] = [];
+
+  const top = await sharp(resized).extract({ left: 0, top: 0, width: w, height: Math.min(FRAG_H, H) }).jpeg({ quality: Q }).toBuffer();
+  out.push({ base64: top.toString("base64") });
+
+  // середину показываем только для действительно длинных страниц
+  if (H > FRAG_H * 2) {
+    const midTop = Math.max(0, Math.round(H / 2 - FRAG_H / 2));
+    const mid = await sharp(resized).extract({ left: 0, top: midTop, width: w, height: Math.min(FRAG_H, H - midTop) }).jpeg({ quality: Q }).toBuffer();
+    out.push({ base64: mid.toString("base64") });
+  }
+  return out;
 }
 
 /** Компактная фактическая выжимка по конкуренту для vision (раздел 9.4). */
@@ -145,6 +173,8 @@ export async function runPipeline(
     resizeForVision(scraped.mobile.base64, config.visionImage.mobileWidth),
   ]);
 
+  const fragments = await buildFragments(scraped.desktop.base64);
+
   const ctx: PromptContext = {
     url: scraped.finalUrl,
     siteType: site_type,
@@ -169,6 +199,7 @@ export async function runPipeline(
       desktop,
       mobile,
       competitors: shots.map((c) => ({ url: c.url, name: c.name, base64: c.shot.base64 })),
+      fragments,
     },
     siteType: site_type,
     usage,

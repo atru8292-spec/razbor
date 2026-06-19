@@ -10,10 +10,30 @@ export interface Screenshots {
   desktop?: { base64: string; width: number; height: number };
   mobile?: { base64: string; width: number; height: number };
   competitors?: { url: string; name: string; base64: string }[];
+  fragments?: { base64: string }[];
 }
+
+const OWNER_CONTACT = process.env.NEXT_PUBLIC_OWNER_CONTACT || "https://t.me/arinashrr";
 
 function dataUrl(b64: string): string {
   return `data:image/jpeg;base64,${b64}`;
+}
+
+// Компактный CTA на эксперта — ставим после вердикта и после находок (Шаг 10).
+function ExpertCtaInline({ text = "Хотите, чтобы это починили?" }: { text?: string }) {
+  return (
+    <div className="mt-6 flex flex-col items-start gap-3 border border-oxblood/25 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+      <span className="font-sans text-sm text-espresso/80">{text}</span>
+      <a
+        href={OWNER_CONTACT}
+        target="_blank"
+        rel="noopener"
+        className="shrink-0 rounded-md bg-oxblood px-5 py-2.5 font-display text-xs font-semibold uppercase tracking-wide text-paper transition hover:opacity-90"
+      >
+        Обсудить редизайн
+      </a>
+    </div>
+  );
 }
 
 function hostOf(url: string): string {
@@ -49,6 +69,7 @@ export function Teaser({ teaser }: { teaser: AuditTeaser }) {
               ))}
             </ol>
           )}
+          <ExpertCtaInline text="Уже видно, где утечки. Обсудим, как починить?" />
         </div>
         <div className="justify-self-center">
           <Tag>Силы LIFT</Tag>
@@ -61,18 +82,23 @@ export function Teaser({ teaser }: { teaser: AuditTeaser }) {
   );
 }
 
-// ─── Аннотированный скриншот: картинка целиком + нумерованная легенда ───
+// ─── Аннотированный скриншот: фрагменты (верх+середина) + нумерованная легенда ───
 function AnnotatedShot({ screenshots, leaks, print = false }: { screenshots: Screenshots; leaks: Finding[]; print?: boolean }) {
-  if (!screenshots.desktop) return null;
+  const frags = screenshots.fragments?.length ? screenshots.fragments : screenshots.desktop ? [{ base64: screenshots.desktop.base64 }] : [];
+  if (frags.length === 0 && leaks.length === 0) return null;
   const legend = leaks.slice(0, 6);
   return (
     <section className="mt-14">
       <Tag>Ключевые точки потери</Tag>
       <div className={`mt-4 grid gap-6 ${print ? "" : "md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"}`}>
-        {!print && (
-          <div className="max-h-[560px] overflow-y-auto border border-espresso/15 bg-white">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={dataUrl(screenshots.desktop.base64)} alt="Скриншот сайта" className="w-full" />
+        {!print && frags.length > 0 && (
+          <div className="space-y-2">
+            {frags.map((f, i) => (
+              <div key={i} className="border border-espresso/15 bg-white">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={dataUrl(f.base64)} alt={i === 0 ? "Первый экран" : "Середина страницы"} className="w-full" />
+              </div>
+            ))}
           </div>
         )}
         <ol className="space-y-4">
@@ -124,7 +150,7 @@ export function FullReport({ result, screenshots, print = false }: { result: Aud
 
   return (
     <div className="mt-12">
-      {(screenshots.desktop || leaks.length > 0) && <AnnotatedShot screenshots={screenshots} leaks={leaks} print={print} />}
+      <AnnotatedShot screenshots={screenshots} leaks={leaks} print={print} />
 
       {strengths.length > 0 && (
         <section className="mt-14">
@@ -159,6 +185,7 @@ export function FullReport({ result, screenshots, print = false }: { result: Aud
             );
           })}
         </div>
+        {!print && <ExpertCtaInline text="Это чинится редизайном. Напишите — разложу по шагам." />}
       </section>
 
       {(result.competitor_gaps?.length > 0 || (screenshots.competitors?.length ?? 0) > 0) && (

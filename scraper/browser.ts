@@ -76,6 +76,44 @@ async function toShot(png: Buffer, maxWidth: number): Promise<Shot> {
   };
 }
 
+/** Закрыть попапы/куки-баннеры перед скриншотом (эвристика, консервативно). */
+async function dismissOverlays(page: import("playwright").Page): Promise<void> {
+  await page
+    .evaluate(() => {
+      const accept = ["принять", "согласен", "согласна", "хорошо", "ок", "ok", "accept", "allow", "agree", "понятно", "закрыть", "close"];
+      // клик по кнопкам согласия (только button/role=button/input — без ссылок, чтобы не уйти со страницы)
+      for (const el of Array.from(document.querySelectorAll('button, [role="button"], input[type="button"], input[type="submit"]'))) {
+        const raw = (el as HTMLElement).innerText || (el as HTMLInputElement).value || el.getAttribute("aria-label") || "";
+        const t = raw.trim().toLowerCase();
+        if (t && t.length < 30 && accept.some((x) => t === x || t.includes(x))) {
+          try {
+            (el as HTMLElement).click();
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      // спрятать оверлеи по типовым селекторам
+      const sel = '[role="dialog"], [class*="popup"], [class*="modal"], [class*="cookie"], [class*="overlay"], [id*="cookie"], .t-popup, .t-popup__container, .t-cookiesbar';
+      for (const el of Array.from(document.querySelectorAll(sel))) {
+        (el as HTMLElement).style.setProperty("display", "none", "important");
+      }
+      // спрятать крупные fixed/sticky-перекрытия (модалки на весь экран)
+      const area = window.innerWidth * window.innerHeight;
+      for (const el of Array.from(document.querySelectorAll("body *"))) {
+        const cs = getComputedStyle(el);
+        if (cs.position === "fixed" || cs.position === "sticky") {
+          const r = (el as HTMLElement).getBoundingClientRect();
+          if (r.width * r.height > area * 0.5 && Number(cs.zIndex || "0") > 100) {
+            (el as HTMLElement).style.setProperty("display", "none", "important");
+          }
+        }
+      }
+    })
+    .catch(() => {});
+  await page.waitForTimeout(300);
+}
+
 /** Прокрутка до низа: триггерит lazy-load картинок (Tilda и пр.), потом возврат наверх. */
 async function autoScroll(page: import("playwright").Page): Promise<void> {
   await page.evaluate(async () => {
@@ -125,6 +163,7 @@ async function shoot(ctx: BrowserContext, url: string, withExtract: boolean): Pr
       ? await page.evaluate(domExtractor, { textLimit: TEXT_LIMIT, listLimit: LIST_LIMIT })
       : null;
     await autoScroll(page);
+    await dismissOverlays(page);
     const shot = await page.screenshot({ fullPage: true, type: "png" });
     const html = (await page.content()).slice(0, HTML_LIMIT);
     return { shot, finalUrl, status: resp?.status() ?? null, html, extracted };
