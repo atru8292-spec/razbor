@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
 import { toTeaser, type AuditResult } from "@/lib/audit-types";
+import { giftUrl, reportUrl, telegramDeeplink } from "@/lib/delivery";
 
 export const runtime = "nodejs";
 
@@ -32,11 +33,17 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     resp.teaser = toTeaser(result);
 
     const { data: leads } = await sb.from("leads").select("id").eq("audit_id", id).limit(1);
-    const unlocked = (leads?.length ?? 0) > 0;
+    const lead = leads?.[0];
+    const unlocked = !!lead;
     resp.unlocked = unlocked;
     if (unlocked) {
       resp.full = result;
       resp.screenshots = audit.screenshots ?? null;
+      resp.delivery = {
+        giftUrl: giftUrl(),
+        reportUrl: reportUrl(id),
+        telegramDeeplink: telegramDeeplink(lead.id),
+      };
     }
   }
 

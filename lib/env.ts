@@ -13,8 +13,12 @@ const schema = z.object({
   PERPLEXITY_API_KEY: z.string().optional(),
   PAGESPEED_API_KEY: z.string().optional(),
   UNISENDER_GO_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().optional(), // подтверждённый отправитель Unisender Go
+  EMAIL_FROM_NAME: z.string().default("RAZBOR"),
   SMS_API_KEY: z.string().optional(),
   TELEGRAM_BOT_TOKEN: z.string().optional(),
+  TELEGRAM_BOT_USERNAME: z.string().default("RazborAuditBot"),
+  GIFT_URL: z.string().optional(), // если пусто — строим из APP_BASE_URL
   TURNSTILE_SECRET_KEY: z.string().optional(),
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().optional(),
   SCRAPER_URL: z.string().url().default("http://localhost:8080"),

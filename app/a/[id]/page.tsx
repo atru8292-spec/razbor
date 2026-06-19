@@ -6,6 +6,7 @@ import Link from "next/link";
 import { track } from "@/lib/client-events";
 import { Teaser, FullReport } from "@/components/AuditView";
 import ContactGate from "@/components/ContactGate";
+import DeliveryBlock, { type Delivery } from "@/components/DeliveryBlock";
 import type { AuditResult, AuditTeaser } from "@/lib/audit-types";
 
 interface AuditStatus {
@@ -16,6 +17,7 @@ interface AuditStatus {
   teaser?: AuditTeaser;
   unlocked?: boolean;
   full?: AuditResult;
+  delivery?: Delivery;
 }
 
 const STAGE_HINT = "Снимаем сайт, считаем метрики и анализируем — обычно пара минут.";
@@ -106,7 +108,10 @@ export default function AuditPage() {
           </div>
 
           {data.unlocked && data.full ? (
-            <FullReport result={data.full} />
+            <>
+              {data.delivery && <DeliveryBlock delivery={data.delivery} />}
+              <FullReport result={data.full} />
+            </>
           ) : (
             <div className="mt-10">
               <ContactGate auditId={id} onUnlocked={refresh} />

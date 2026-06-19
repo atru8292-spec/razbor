@@ -3,6 +3,7 @@ import { leadRequestSchema } from "@/lib/validation";
 import { normalizeContact, isContactRateLimited, getClientIp } from "@/lib/limit";
 import { logEvent } from "@/lib/events";
 import { getSupabase } from "@/lib/supabase";
+import { deliverGift } from "@/lib/delivery";
 
 export const runtime = "nodejs";
 
@@ -70,5 +71,19 @@ export async function POST(req: NextRequest) {
   }
 
   await logEvent("contact_submitted", { auditId: audit.id, leadId: lead.id, meta: { ip, channel: contact.channel } });
+
+  // Немедленная доставка подарка/отчёта (почта+СМС) — best-effort, не валит ответ.
+  try {
+    await deliverGift({
+      id: lead.id,
+      audit_id: audit.id,
+      phone: contact.phone,
+      telegram: contact.telegram,
+      email: contact.email,
+    });
+  } catch (e) {
+    console.error("[api/lead] доставка не удалась:", e);
+  }
+
   return NextResponse.json({ ok: true });
 }
