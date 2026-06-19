@@ -19,6 +19,10 @@ export const metadata: Metadata = {
   title: "RAZBOR — видно, где сайт теряет заявки",
   description:
     "AI-аудит сайта: за пару минут показываем, где и почему сайт теряет заявки.",
+  icons: {
+    icon: "/favicon.png",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({

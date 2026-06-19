@@ -6,7 +6,8 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
       <header className="flex items-center justify-between border-b border-espresso/15 pb-4">
-        <span className="font-display text-base font-bold uppercase tracking-[0.35em] text-oxblood">RAZBOR</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.svg" alt="RAZBOR" className="h-7 w-auto" />
         <span className="hidden font-sans text-xs text-espresso/50 sm:block">Аудит сайтов</span>
       </header>
 
