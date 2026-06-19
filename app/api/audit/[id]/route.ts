@@ -1,0 +1,44 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getSupabase } from "@/lib/supabase";
+import { toTeaser, type AuditResult } from "@/lib/audit-types";
+
+export const runtime = "nodejs";
+
+// GET /api/audit/:id — поллинг статуса. Тизер отдаём всегда; полный разбор —
+// только если по аудиту оставлен контакт (гейт, Flow B).
+export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
+  const sb = getSupabase();
+
+  const { data: audit, error } = await sb
+    .from("audits")
+    .select("id, url, status, progress, result, screenshots, error_message")
+    .eq("id", id)
+    .single();
+
+  if (error || !audit) {
+    return NextResponse.json({ error: "Проверка не найдена." }, { status: 404 });
+  }
+
+  const resp: Record<string, unknown> = {
+    status: audit.status,
+    progress: audit.progress ?? null,
+    url: audit.url,
+    error: audit.error_message ?? null,
+  };
+
+  if (audit.status === "done" && audit.result) {
+    const result = audit.result as AuditResult;
+    resp.teaser = toTeaser(result);
+
+    const { data: leads } = await sb.from("leads").select("id").eq("audit_id", id).limit(1);
+    const unlocked = (leads?.length ?? 0) > 0;
+    resp.unlocked = unlocked;
+    if (unlocked) {
+      resp.full = result;
+      resp.screenshots = audit.screenshots ?? null;
+    }
+  }
+
+  return NextResponse.json(resp);
+}

@@ -1,32 +1,31 @@
-// Временная заглушка Шага 1. Лендинг и форма — Шаг 3 (раздел 19 ТЗ).
+import UrlForm from "@/components/UrlForm";
+
+// Лендинг (Шаг 3): оффер, поле URL, AEO-хук. Минимально по бренду — премиум на Шаге 7.
 export default function Home() {
   return (
-    <main
-      style={{
-        minHeight: "100dvh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "0.75rem",
-        textAlign: "center",
-        padding: "2rem",
-      }}
-    >
-      <h1
-        style={{
-          fontFamily: "var(--font-unbounded), sans-serif",
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          fontSize: "clamp(2.5rem, 8vw, 5rem)",
-          color: "var(--oxblood)",
-          margin: 0,
-        }}
-      >
-        RAZBOR
+    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col justify-center px-6 py-16">
+      <p className="font-display text-sm uppercase tracking-[0.3em] text-oxblood">Razbor</p>
+
+      <h1 className="mt-6 font-display text-4xl font-bold leading-tight text-espresso sm:text-5xl">
+        Видно, где сайт теряет заявки
       </h1>
-      <p style={{ color: "var(--espresso)", opacity: 0.7, margin: 0 }}>
-        Видно, где сайт теряет заявки. Скоро.
+
+      <p className="mt-5 max-w-xl font-sans text-lg leading-relaxed text-espresso/80">
+        Вставьте ссылку — за пару минут покажем по элементам вашего сайта, где и почему уходят
+        клиенты. С оценками конверсии и удобства и планом, что чинить первым.
+      </p>
+
+      <div className="mt-10">
+        <UrlForm />
+      </div>
+
+      <p className="mt-6 font-sans text-sm text-navy">
+        Заодно проверим, видит ли ваш сайт ИИ-поиск (ChatGPT, Алиса, Нейро).
+      </p>
+
+      <p className="mt-12 font-sans text-xs text-espresso/50">
+        Нажимая «Проверить сайт», вы запускаете бесплатный анализ. Контакт понадобится позже —
+        чтобы открыть полный разбор и забрать подарок.
       </p>
     </main>
   );
