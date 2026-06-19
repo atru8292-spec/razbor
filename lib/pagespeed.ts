@@ -24,13 +24,18 @@ async function run(url: string, strategy: "mobile" | "desktop"): Promise<PageSpe
     if (env.PAGESPEED_API_KEY) u.searchParams.set("key", env.PAGESPEED_API_KEY);
 
     const resp = await fetch(u, { signal: ctrl.signal });
-    if (!resp.ok) return null;
     const json = (await resp.json()) as {
+      error?: { code?: number; message?: string };
       lighthouseResult?: {
         categories?: { performance?: { score?: number } };
         audits?: Record<string, { displayValue?: string }>;
       };
     };
+    if (!resp.ok || json.error) {
+      const reason = json.error?.message ?? `HTTP ${resp.status}`;
+      console.error(`[pagespeed] ${strategy} не отработал: ${reason}${env.PAGESPEED_API_KEY ? "" : " (PAGESPEED_API_KEY не задан — общая квота 429)"}`);
+      return null;
+    }
     const lh = json.lighthouseResult;
     const score = lh?.categories?.performance?.score;
     const audits = lh?.audits ?? {};

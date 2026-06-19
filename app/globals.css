@@ -2,17 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Базовые токены палитры (docs/DESIGN.md). Полная дизайн-система — Шаг 7. */
+/* Дизайн-система (docs/REDESIGN.md §1): тонированные нейтралы, один акцент. */
 :root {
   --oxblood: #4e0000;
-  --espresso: #362017;
+  --oxblood-deep: #360000;
   --paper: #faf5e7;
+  --paper-2: #f2ead6;
+  --ink: #1a1a1a;
+  --ink-soft: #4a4038;
+  --line: #e0d5bd;
+  /* legacy — ещё используются в severity/старых блоках */
+  --espresso: #362017;
   --dusty-blue: #a9bbd1;
   --navy: #263650;
 }
 
 body {
   background: var(--paper);
-  color: var(--espresso);
+  color: var(--ink);
   font-family: var(--font-manrope), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Reveal на скролле (§1a). Без motion — сразу видно. */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity 0.45s ease,
+      transform 0.45s ease;
+  }
+  .reveal.is-in {
+    opacity: 1;
+    transform: none;
+  }
 }

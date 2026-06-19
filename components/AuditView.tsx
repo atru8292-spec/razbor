@@ -48,11 +48,11 @@ function hostOf(url: string): string {
 export function Teaser({ teaser }: { teaser: AuditTeaser }) {
   return (
     <section>
-      <div className="grid grid-cols-2 gap-px bg-espresso/12 sm:grid-cols-4">
-        <ScoreGauge label="Итог" value={teaser.overall_score} big />
-        <ScoreGauge label="Конверсия" value={teaser.conversion_score} big />
-        <ScoreGauge label="Удобство" value={teaser.usability_score} big />
-        <ScoreGauge label="ИИ-видимость" value={teaser.aeo_score} big />
+      <div className="grid grid-cols-2 divide-line sm:grid-cols-4 sm:divide-x">
+        <ScoreGauge label="Итог" value={teaser.overall_score} />
+        <ScoreGauge label="Конверсия" value={teaser.conversion_score} />
+        <ScoreGauge label="Удобство" value={teaser.usability_score} />
+        <ScoreGauge label="ИИ-видимость" value={teaser.aeo_score} />
       </div>
 
       <div className="mt-10 grid gap-8 md:grid-cols-[1fr_auto] md:items-start">
@@ -185,7 +185,6 @@ export function FullReport({ result, screenshots, print = false }: { result: Aud
             );
           })}
         </div>
-        {!print && <ExpertCtaInline text="Это чинится редизайном. Напишите — разложу по шагам." />}
       </section>
 
       {(result.competitor_gaps?.length > 0 || (screenshots.competitors?.length ?? 0) > 0) && (

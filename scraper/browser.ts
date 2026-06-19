@@ -36,7 +36,8 @@ async function getBrowser(): Promise<Browser> {
 /** Печать страницы в PDF тем же Playwright (раздел 4.9/5). url — наша /print/[id]. */
 export async function renderPdf(url: string): Promise<Buffer> {
   const br = await getBrowser();
-  const ctx = await br.newContext();
+  // reduce → счётчики/радар рисуются сразу (без скролл-триггера в headless-печати)
+  const ctx = await br.newContext({ reducedMotion: "reduce" });
   const page = await ctx.newPage();
   try {
     await page.goto(url, { timeout: NAV_TIMEOUT_MS, waitUntil: "load" });
