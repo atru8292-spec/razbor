@@ -1,10 +1,13 @@
 "use client";
 
-import type { AuditResult, AuditTeaser, Finding } from "@/lib/audit-types";
+import { useState } from "react";
+import type { AuditResult, AuditTeaser, Finding, Area } from "@/lib/audit-types";
 import { SEVERITY, type Severity } from "./ui/severity";
 import ScoreGauge from "./ui/ScoreGauge";
 import LiftRadar from "./ui/LiftRadar";
 import Tag from "./ui/Tag";
+
+const OWNER_CONTACT = process.env.NEXT_PUBLIC_OWNER_CONTACT || "https://t.me/arinashrr";
 
 export interface Screenshots {
   desktop?: { base64: string; width: number; height: number };
@@ -13,22 +16,27 @@ export interface Screenshots {
   fragments?: { base64: string }[];
 }
 
-const OWNER_CONTACT = process.env.NEXT_PUBLIC_OWNER_CONTACT || "https://t.me/arinashrr";
+const dataUrl = (b64: string) => `data:image/jpeg;base64,${b64}`;
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+};
+const plural = (n: number) => `${n} ${n === 1 ? "находка" : n >= 2 && n <= 4 ? "находки" : "находок"}`;
+const sevRank = (s: string) => (s === "high" ? 3 : s === "medium" ? 2 : s === "low" ? 1 : 0);
 
-function dataUrl(b64: string): string {
-  return `data:image/jpeg;base64,${b64}`;
-}
-
-// Компактный CTA на эксперта — ставим после вердикта и после находок (Шаг 10).
-function ExpertCtaInline({ text = "Хотите, чтобы это починили?" }: { text?: string }) {
+// Промежуточный CTA (единственный, после топ-3).
+function CtaInline() {
   return (
-    <div className="mt-6 flex flex-col items-start gap-3 border border-oxblood/25 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
-      <span className="font-sans text-sm text-espresso/80">{text}</span>
+    <div className="mt-8 flex flex-col items-start gap-3 border-y-2 border-oxblood/20 py-5 sm:flex-row sm:items-center sm:justify-between">
+      <span className="font-sans text-base text-ink">Уже видно, где утечки. Обсудим, как починить?</span>
       <a
         href={OWNER_CONTACT}
         target="_blank"
         rel="noopener"
-        className="shrink-0 rounded-md bg-oxblood px-5 py-2.5 font-display text-xs font-semibold uppercase tracking-wide text-paper transition hover:opacity-90"
+        className="shrink-0 bg-oxblood px-6 py-3 font-display text-sm font-bold uppercase tracking-wide text-paper transition hover:bg-oxblood-deep"
       >
         Обсудить редизайн
       </a>
@@ -36,16 +44,11 @@ function ExpertCtaInline({ text = "Хотите, чтобы это почини�
   );
 }
 
-function hostOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
-
-// ─── Тизер (бесплатно): оценки, вердикт, радар, приоритеты ───
+// ─── Блок A: резюме (бесплатно) ───
 export function Teaser({ teaser }: { teaser: AuditTeaser }) {
+  const [first, ...rest] = teaser.verdict.split(/(?<=[.!?])\s+/);
+  const restText = rest.join(" ");
+
   return (
     <section>
       <div className="grid grid-cols-2 divide-line sm:grid-cols-4 sm:divide-x">
@@ -55,46 +58,100 @@ export function Teaser({ teaser }: { teaser: AuditTeaser }) {
         <ScoreGauge label="ИИ-видимость" value={teaser.aeo_score} />
       </div>
 
-      <div className="mt-10 grid gap-8 md:grid-cols-[1fr_auto] md:items-start">
+      <div className="mt-16 grid gap-10 md:grid-cols-[1fr_340px] md:items-start">
         <div>
           <Tag>Главная утечка</Tag>
-          <p className="mt-3 font-display text-2xl font-semibold leading-snug text-espresso">{teaser.verdict}</p>
-          {teaser.top_priorities.length > 0 && (
-            <ol className="mt-6 space-y-3">
-              {teaser.top_priorities.map((p, i) => (
-                <li key={i} className="flex gap-3 border-l-2 border-oxblood pl-4 font-sans text-espresso/90">
-                  <span className="font-display font-bold text-oxblood">{i + 1}</span>
-                  <span>{p}</span>
-                </li>
-              ))}
-            </ol>
-          )}
-          <ExpertCtaInline text="Уже видно, где утечки. Обсудим, как починить?" />
+          <p className="mt-4 font-display text-3xl font-extrabold leading-[1.05] text-ink sm:text-4xl">{first}</p>
+          {restText && <p className="mt-4 max-w-xl font-sans text-lg leading-relaxed text-ink-soft">{restText}</p>}
         </div>
         <div className="justify-self-center">
-          <Tag>Силы LIFT</Tag>
-          <div className="mt-2">
-            <LiftRadar lift={teaser.lift} />
-          </div>
+          <LiftRadar lift={teaser.lift} />
         </div>
       </div>
+
+      {teaser.top_priorities.length > 0 && (
+        <div className="mt-16">
+          <Tag>Топ-3 точки потери</Tag>
+          <ol className="mt-5 divide-y divide-line border-y border-line">
+            {teaser.top_priorities.slice(0, 3).map((p, i) => (
+              <li key={i} className="flex items-baseline gap-5 py-5">
+                <span className="font-display text-3xl font-black leading-none text-oxblood sm:text-4xl">{i + 1}</span>
+                <span className="font-sans text-lg leading-snug text-ink">{p}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      <CtaInline />
     </section>
   );
 }
 
-// ─── Аннотированный скриншот: фрагменты (верх+середина) + нумерованная легенда ───
-function AnnotatedShot({ screenshots, leaks, print = false }: { screenshots: Screenshots; leaks: Finding[]; print?: boolean }) {
+function FindingCard({ f }: { f: Finding }) {
+  const s = SEVERITY[f.severity as Severity] ?? SEVERITY.medium;
+  return (
+    <div className="py-4">
+      <div className="flex items-center gap-2">
+        <span className={`h-2 w-2 rounded-full ${s.dot}`} />
+        <span className={`font-display text-[10px] font-bold uppercase tracking-widest ${s.text}`}>{s.label}</span>
+        <span className="font-sans font-semibold text-ink">{f.finding}</span>
+      </div>
+      {f.why_it_hurts && <p className="mt-2 font-sans text-sm leading-relaxed text-ink-soft">{f.why_it_hurts}</p>}
+      {f.evidence && <p className="mt-2 bg-paper-2 px-3 py-2 font-sans text-xs italic text-ink-soft">{f.evidence}</p>}
+      {f.impact_estimate && <p className="mt-2 font-sans text-xs font-semibold uppercase tracking-wide text-oxblood">{f.impact_estimate}</p>}
+    </div>
+  );
+}
+
+// ─── Блок C: направление-аккордеон ───
+function AreaAccordion({ area, forceOpen }: { area: Area; forceOpen: boolean }) {
+  const leaks = (area.findings ?? []).filter((f) => f.severity !== "ok").sort((a, b) => sevRank(b.severity) - sevRank(a.severity));
+  const [open, setOpen] = useState(forceOpen);
+  const low = area.score < 55;
+
+  return (
+    <div className="border-b border-line">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-4 py-5 text-left"
+      >
+        <span className="font-display text-lg font-extrabold text-ink sm:text-xl">{area.title}</span>
+        <span className="flex items-center gap-5">
+          <span className="hidden font-sans text-xs uppercase tracking-wide text-ink-soft sm:inline">
+            {leaks.length ? plural(leaks.length) : "без проблем"}
+          </span>
+          <span className={`font-display text-2xl font-black leading-none ${low ? "text-oxblood" : "text-ink"}`}>{area.score}</span>
+          <span className={`font-display text-xl text-ink-soft transition-transform duration-300 ${open ? "rotate-45" : ""}`}>+</span>
+        </span>
+      </button>
+      <div className={`grid transition-[grid-template-rows] duration-300 ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
+        <div className="overflow-hidden">
+          <div className="divide-y divide-line pb-2">
+            {leaks.length ? leaks.map((f, i) => <FindingCard key={i} f={f} />) : <p className="py-4 font-sans text-sm text-ink-soft">Серьёзных проблем не нашли.</p>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const EFFORT_LABEL: Record<string, string> = { low: "быстро", medium: "средне", high: "долго" };
+
+// ─── Блок D: аннотированный скрин ───
+function AnnotatedShot({ screenshots, leaks, print }: { screenshots: Screenshots; leaks: Finding[]; print: boolean }) {
   const frags = screenshots.fragments?.length ? screenshots.fragments : screenshots.desktop ? [{ base64: screenshots.desktop.base64 }] : [];
   if (frags.length === 0 && leaks.length === 0) return null;
-  const legend = leaks.slice(0, 6);
   return (
-    <section className="mt-14">
+    <section className="mt-24">
       <Tag>Ключевые точки потери</Tag>
-      <div className={`mt-4 grid gap-6 ${print ? "" : "md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"}`}>
+      <div className={`mt-5 grid gap-6 ${print ? "" : "md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"}`}>
         {!print && frags.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {frags.map((f, i) => (
-              <div key={i} className="border border-espresso/15 bg-white">
+              <div key={i} className="border border-line bg-white">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={dataUrl(f.base64)} alt={i === 0 ? "Первый экран" : "Середина страницы"} className="w-full" />
               </div>
@@ -102,16 +159,14 @@ function AnnotatedShot({ screenshots, leaks, print = false }: { screenshots: Scr
           </div>
         )}
         <ol className="space-y-4">
-          {legend.map((f, i) => {
+          {leaks.slice(0, 6).map((f, i) => {
             const s = SEVERITY[f.severity as Severity] ?? SEVERITY.medium;
             return (
               <li key={i} className="flex gap-3">
-                <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${s.dot} font-display text-xs font-bold text-paper`}>
-                  {i + 1}
-                </span>
+                <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${s.dot} font-display text-xs font-bold text-paper`}>{i + 1}</span>
                 <div>
-                  <p className="font-sans font-medium text-espresso">{f.finding}</p>
-                  {f.impact_estimate && <p className="mt-0.5 font-sans text-xs text-oxblood">{f.impact_estimate}</p>}
+                  <p className="font-sans font-medium text-ink">{f.finding}</p>
+                  {f.impact_estimate && <p className="mt-0.5 font-sans text-xs font-semibold uppercase tracking-wide text-oxblood">{f.impact_estimate}</p>}
                 </div>
               </li>
             );
@@ -122,42 +177,40 @@ function AnnotatedShot({ screenshots, leaks, print = false }: { screenshots: Scr
   );
 }
 
-function FindingCard({ f }: { f: Finding }) {
-  const s = SEVERITY[f.severity as Severity] ?? SEVERITY.medium;
+// ─── Блок E: финальный CTA (full-bleed оксблад) ───
+function FinalCta() {
   return (
-    <div className="border border-espresso/12 bg-white p-4">
-      <div className="flex items-center gap-2">
-        <span className={`h-2 w-2 rounded-full ${s.dot}`} />
-        <span className={`font-display text-[10px] font-bold uppercase tracking-widest ${s.text}`}>{s.label}</span>
-        <span className="font-sans font-medium text-espresso">{f.finding}</span>
-      </div>
-      {f.why_it_hurts && <p className="mt-2 font-sans text-sm text-espresso/75">{f.why_it_hurts}</p>}
-      {f.evidence && <p className="mt-1 font-sans text-xs italic text-espresso/55">{f.evidence}</p>}
-      {f.impact_estimate && <p className="mt-1 font-sans text-xs text-oxblood">Потери: {f.impact_estimate}</p>}
-    </div>
+    <section className="mt-24 bg-oxblood px-8 py-16 text-center">
+      <h2 className="font-display text-3xl font-black text-paper sm:text-4xl">Хотите, чтобы это починили?</h2>
+      <p className="mx-auto mt-4 max-w-md font-sans text-paper/80">
+        Соберу план правок под ваш сайт — 20 минут, бесплатно. Напишите, договоримся.
+      </p>
+      <a
+        href={OWNER_CONTACT}
+        target="_blank"
+        rel="noopener"
+        className="mt-7 inline-block bg-paper px-8 py-4 font-display text-sm font-bold uppercase tracking-wide text-oxblood transition hover:bg-paper-2"
+      >
+        Обсудить редизайн
+      </a>
+    </section>
   );
 }
 
-const EFFORT_LABEL: Record<string, string> = { low: "быстро", medium: "средне", high: "долго" };
-
-// ─── Полный разбор (после контакта): тон «хорошо → дыры → план» ───
 export function FullReport({ result, screenshots, print = false }: { result: AuditResult; screenshots: Screenshots; print?: boolean }) {
-  const allFindings = (result.areas ?? []).flatMap((a) => a.findings ?? []);
-  const strengths = allFindings.filter((f) => f.severity === "ok");
-  const leaks = allFindings
-    .filter((f) => f.severity !== "ok")
-    .sort((a, b) => sevRank(b.severity) - sevRank(a.severity));
+  const all = (result.areas ?? []).flatMap((a) => a.findings ?? []);
+  const strengths = all.filter((f) => f.severity === "ok");
+  const leaks = all.filter((f) => f.severity !== "ok").sort((a, b) => sevRank(b.severity) - sevRank(a.severity));
 
   return (
-    <div className="mt-12">
-      <AnnotatedShot screenshots={screenshots} leaks={leaks} print={print} />
-
+    <div className="mt-24">
       {strengths.length > 0 && (
-        <section className="mt-14">
+        <section>
           <Tag>Что работает</Tag>
-          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+          <ul className="mt-5 space-y-3">
             {strengths.map((f, i) => (
-              <li key={i} className="flex gap-2 border-l-2 border-dusty-blue pl-3 font-sans text-sm text-espresso/85">
+              <li key={i} className="flex gap-3 font-sans text-ink">
+                <span className="font-display font-black text-dusty-blue">✓</span>
                 {f.finding}
               </li>
             ))}
@@ -165,51 +218,38 @@ export function FullReport({ result, screenshots, print = false }: { result: Aud
         </section>
       )}
 
-      <section className="mt-14">
-        <Tag>Где теряются заявки</Tag>
-        <div className="mt-4 space-y-8">
-          {(result.areas ?? []).map((area) => {
-            const leaksHere = (area.findings ?? []).filter((f) => f.severity !== "ok");
-            if (leaksHere.length === 0) return null;
-            return (
-              <div key={area.key}>
-                <h3 className="font-display text-lg font-semibold text-espresso">
-                  {area.title} <span className="font-normal text-espresso/35">· {area.score}</span>
-                </h3>
-                <div className="mt-3 grid gap-3">
-                  {leaksHere.map((f, i) => (
-                    <FindingCard key={i} f={f} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+      <section className="mt-24">
+        <Tag>Разбор по направлениям</Tag>
+        <div className="mt-5 border-t border-line">
+          {(result.areas ?? []).map((area) => (
+            <AreaAccordion key={area.key} area={area} forceOpen={print} />
+          ))}
         </div>
       </section>
 
+      <AnnotatedShot screenshots={screenshots} leaks={leaks} print={print} />
+
       {(result.competitor_gaps?.length > 0 || (screenshots.competitors?.length ?? 0) > 0) && (
-        <section className="mt-14">
+        <section className="mt-24">
           <Tag>Конкуренты</Tag>
           {screenshots.competitors && screenshots.competitors.length > 0 && (
-            <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3">
               {screenshots.competitors.map((c, i) => (
-                <a key={i} href={c.url} target="_blank" rel="noopener" className="group block border border-espresso/15 bg-white">
+                <a key={i} href={c.url} target="_blank" rel="noopener" className="group block border border-line bg-white">
                   <div className="h-36 overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={dataUrl(c.base64)} alt={c.name} className="w-full" />
                   </div>
-                  <div className="border-t border-espresso/10 px-3 py-2 font-sans text-xs text-espresso/70 group-hover:text-oxblood">
-                    {hostOf(c.url)}
-                  </div>
+                  <div className="border-t border-line px-3 py-2 font-sans text-xs text-ink-soft group-hover:text-oxblood">{hostOf(c.url)}</div>
                 </a>
               ))}
             </div>
           )}
           {result.competitor_gaps?.length > 0 && (
-            <ul className="mt-5 space-y-2">
+            <ul className="mt-6 divide-y divide-line border-y border-line">
               {result.competitor_gaps.map((g, i) => (
-                <li key={i} className="border border-espresso/12 bg-white p-3 font-sans text-sm text-espresso/85">
-                  <span className="font-medium text-espresso">{g.missing}</span> — {g.impact}
+                <li key={i} className="py-4 font-sans text-ink">
+                  <span className="font-semibold">{g.missing}</span> — <span className="text-ink-soft">{g.impact}</span>
                 </li>
               ))}
             </ul>
@@ -218,27 +258,26 @@ export function FullReport({ result, screenshots, print = false }: { result: Aud
       )}
 
       {result.detailed_fixes?.length > 0 && (
-        <section className="mt-14">
+        <section className="mt-24">
           <Tag>План правок</Tag>
-          <div className="mt-4 divide-y divide-espresso/10 border border-espresso/12 bg-white">
+          <ol className="mt-5 divide-y divide-line border-y border-line">
             {result.detailed_fixes.map((fix, i) => (
-              <div key={i} className="flex flex-col gap-1 p-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="sm:pr-6">
-                  <p className="font-sans font-medium text-espresso">{fix.fix}</p>
-                  <p className="font-sans text-xs text-espresso/60">{fix.expected_effect}</p>
+              <li key={i} className="flex items-baseline gap-5 py-5">
+                <span className="font-display text-2xl font-black leading-none text-oxblood">{i + 1}</span>
+                <div className="flex-1">
+                  <p className="font-sans font-semibold text-ink">{fix.fix}</p>
+                  <p className="font-sans text-sm text-ink-soft">{fix.expected_effect}</p>
                 </div>
-                <span className="shrink-0 self-start border border-espresso/20 px-2 py-0.5 font-display text-[10px] uppercase tracking-widest text-navy">
+                <span className="shrink-0 border border-line px-2 py-0.5 font-display text-[10px] uppercase tracking-widest text-ink-soft">
                   {EFFORT_LABEL[fix.effort] ?? fix.effort}
                 </span>
-              </div>
+              </li>
             ))}
-          </div>
+          </ol>
         </section>
       )}
+
+      {!print && <FinalCta />}
     </div>
   );
-}
-
-function sevRank(s: string): number {
-  return s === "high" ? 3 : s === "medium" ? 2 : s === "low" ? 1 : 0;
 }

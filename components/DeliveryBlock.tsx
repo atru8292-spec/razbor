@@ -9,35 +9,27 @@ export interface Delivery {
 }
 
 export default function DeliveryBlock({ delivery, pdfHref }: { delivery: Delivery; pdfHref: string }) {
+  const ghost =
+    "border-[1.5px] border-ink px-5 py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-ink transition hover:bg-ink hover:text-paper";
   return (
-    <section className="mt-8 rounded-lg border border-oxblood/30 bg-white p-6">
-      <h3 className="font-display text-xl font-semibold text-espresso">Ваш подарок и отчёт</h3>
-      <p className="mt-2 font-sans text-sm text-espresso/70">
+    <section className="mt-12 bg-paper-2 p-6 sm:p-8">
+      <h3 className="font-display text-xl font-extrabold text-ink">Ваш подарок и отчёт</h3>
+      <p className="mt-2 max-w-lg font-sans text-sm text-ink-soft">
         Чек-лист «Где сайт теряет заявки» и ссылка на этот разбор — сохраните или заберите в Telegram.
       </p>
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
         <a
           href={delivery.giftUrl}
           target="_blank"
           rel="noopener"
-          className="rounded-md bg-oxblood px-5 py-3 text-center font-display text-sm font-semibold uppercase tracking-wide text-paper transition hover:opacity-90"
+          className="bg-oxblood px-6 py-3 text-center font-display text-sm font-bold uppercase tracking-wide text-paper transition hover:bg-oxblood-deep"
         >
           Скачать чек-лист
         </a>
-        <a
-          href={delivery.telegramDeeplink}
-          target="_blank"
-          rel="noopener"
-          className="rounded-md border border-navy px-5 py-3 text-center font-display text-sm font-semibold uppercase tracking-wide text-navy transition hover:bg-navy hover:text-paper"
-        >
+        <a href={delivery.telegramDeeplink} target="_blank" rel="noopener" className={ghost}>
           Забрать в Telegram
         </a>
-        <a
-          href={pdfHref}
-          target="_blank"
-          rel="noopener"
-          className="rounded-md border border-espresso/30 px-5 py-3 text-center font-display text-sm font-semibold uppercase tracking-wide text-espresso transition hover:border-espresso"
-        >
+        <a href={pdfHref} target="_blank" rel="noopener" className={ghost}>
           Скачать PDF
         </a>
       </div>

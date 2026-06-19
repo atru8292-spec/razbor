@@ -59,38 +59,34 @@ export default function ContactGate({ auditId, onUnlocked }: { auditId: string; 
   }
 
   return (
-    <form onSubmit={onSubmit} className="rounded-lg border border-espresso/15 bg-white p-6">
-      <h3 className="font-display text-xl font-semibold text-espresso">Открыть полный разбор</h3>
-      <p className="mt-2 font-sans text-sm text-espresso/70">
+    <form onSubmit={onSubmit} className="border-t-2 border-oxblood pt-8">
+      <h3 className="font-display text-2xl font-extrabold text-ink sm:text-3xl">Открыть полный разбор</h3>
+      <p className="mt-3 max-w-lg font-sans text-ink-soft">
         Оставьте контакт — откроем разбор по всем направлениям, отдадим PDF и подарок «Где сайт
         теряет заявки».
       </p>
 
-      <input
-        type="text"
-        placeholder="Телефон или @телеграм"
-        value={contact}
-        onChange={(e) => setContact(e.target.value)}
-        disabled={busy}
-        className="mt-4 w-full rounded-md border border-espresso/20 px-4 py-3 font-sans text-espresso outline-none focus:border-oxblood"
-      />
-      <input
-        type="email"
-        placeholder="E-mail (по желанию)"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        disabled={busy}
-        className="mt-3 w-full rounded-md border border-espresso/20 px-4 py-3 font-sans text-espresso outline-none focus:border-oxblood"
-      />
-
-      <label className="mt-4 flex items-start gap-2 font-sans text-xs text-espresso/70">
+      <div className="mt-6 max-w-lg space-y-3">
         <input
-          type="checkbox"
-          checked={consent}
-          onChange={(e) => setConsent(e.target.checked)}
+          type="text"
+          placeholder="Телефон или @телеграм"
+          value={contact}
+          onChange={(e) => setContact(e.target.value)}
           disabled={busy}
-          className="mt-0.5"
+          className="w-full border-[1.5px] border-ink bg-transparent px-4 py-3 font-sans text-ink outline-none transition focus:border-oxblood"
         />
+        <input
+          type="email"
+          placeholder="E-mail (по желанию)"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          disabled={busy}
+          className="w-full border-[1.5px] border-ink bg-transparent px-4 py-3 font-sans text-ink outline-none transition focus:border-oxblood"
+        />
+      </div>
+
+      <label className="mt-4 flex max-w-lg items-start gap-2 font-sans text-xs text-ink-soft">
+        <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} disabled={busy} className="mt-0.5" />
         <span>
           Согласен на обработку персональных данных согласно{" "}
           <Link href="/policy" target="_blank" className="underline">
@@ -103,7 +99,7 @@ export default function ContactGate({ auditId, onUnlocked }: { auditId: string; 
       <button
         type="submit"
         disabled={busy}
-        className="mt-5 w-full rounded-md bg-oxblood px-6 py-3 font-display font-semibold uppercase tracking-wide text-paper transition hover:opacity-90 disabled:opacity-50"
+        className="mt-6 w-full max-w-lg bg-oxblood px-6 py-4 font-display font-bold uppercase tracking-wide text-paper transition hover:bg-oxblood-deep disabled:opacity-50"
       >
         {busy ? "Открываю…" : "Получить разбор и подарок"}
       </button>

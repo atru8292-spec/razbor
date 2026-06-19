@@ -9,8 +9,6 @@ import DeliveryBlock, { type Delivery } from "@/components/DeliveryBlock";
 import WaitingScreen from "@/components/WaitingScreen";
 import type { AuditResult, AuditTeaser } from "@/lib/audit-types";
 
-const OWNER_CONTACT = process.env.NEXT_PUBLIC_OWNER_CONTACT || "https://t.me/arinashrr";
-
 interface AuditStatus {
   status: "pending" | "running" | "done" | "error";
   progress: string | null;
@@ -98,12 +96,12 @@ export default function AuditClient({ id }: { id: string }) {
 
       {!fetchError && data?.status === "done" && data.teaser && (
         <div className="mt-10">
-          <div className="flex items-baseline justify-between gap-4 border-b border-espresso/15 pb-4">
-            <h1 className="font-display text-3xl font-bold text-espresso">Разбор сайта</h1>
-            {data.url && <span className="font-sans text-sm text-espresso/50">{prettyUrl(data.url)}</span>}
+          <div className="flex items-baseline justify-between gap-4 border-b border-line pb-4">
+            <h1 className="font-display text-3xl font-black text-ink sm:text-4xl">Разбор сайта</h1>
+            {data.url && <span className="font-sans text-sm text-ink-soft">{prettyUrl(data.url)}</span>}
           </div>
 
-          <div className="mt-8">
+          <div className="mt-10">
             <Teaser teaser={data.teaser} />
           </div>
 
@@ -117,31 +115,9 @@ export default function AuditClient({ id }: { id: string }) {
               <ContactGate auditId={id} onUnlocked={refresh} />
             </div>
           )}
-
-          <ExpertCta />
         </div>
       )}
     </main>
-  );
-}
-
-// Один финальный CTA на эксперта (раздел 2.7).
-function ExpertCta() {
-  return (
-    <section className="mt-16 border-t border-espresso/15 pt-8 text-center">
-      <p className="font-display text-xl font-semibold text-espresso">Хотите, чтобы это починили?</p>
-      <p className="mx-auto mt-2 max-w-md font-sans text-sm text-espresso/70">
-        Разбор показывает, где теряются заявки. Напишите — обсудим редизайн и автоматизацию под ваши задачи.
-      </p>
-      <a
-        href={OWNER_CONTACT}
-        target="_blank"
-        rel="noopener"
-        className="mt-5 inline-block rounded-md bg-oxblood px-7 py-3 font-display text-sm font-semibold uppercase tracking-wide text-paper transition hover:opacity-90"
-      >
-        Обсудить редизайн
-      </a>
-    </section>
   );
 }
 
