@@ -60,7 +60,8 @@ export interface PromptContext {
   extracted: ExtractedData;
   aeo: AeoSignals;
   pagespeed: { mobile: PageSpeedMetrics | null; desktop: PageSpeedMetrics | null };
-  hasCompetitors: boolean;
+  // Выжимки по конкурентам (раздел 9). Скриншоты конкурентов идут картинками отдельно.
+  competitors: { url: string; summary: string }[];
 }
 
 function ps(m: PageSpeedMetrics | null): string {
@@ -100,7 +101,11 @@ export function buildUserText(ctx: PromptContext): string {
     "=== ВИДИМЫЙ ТЕКСТ СТРАНИЦЫ (фрагмент) ===",
     e.visibleText.slice(0, 12000),
     "",
-    ctx.hasCompetitors ? "" : "Данных по конкурентам нет — competitor_gaps оставь пустым массивом.",
+    "=== КОНКУРЕНТЫ ===",
+    ctx.competitors.length > 0
+      ? `Ниже ${ctx.competitors.length} конкурент(а/ов) — выжимки и их скриншоты приложены картинками после скринов целевого сайта (в том же порядке). Заполни competitor_gaps: что есть у большинства из них, но нет у целевого сайта.\n\n` +
+        ctx.competitors.map((c, i) => `Конкурент ${i + 1} (${c.url}):\n${c.summary}`).join("\n\n")
+      : "Данных по конкурентам нет — competitor_gaps оставь пустым массивом.",
     "",
     SCHEMA_HINT,
   ];

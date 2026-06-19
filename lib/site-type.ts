@@ -10,13 +10,14 @@ const TYPES: SiteType[] = ["ecommerce", "leadgen", "saas", "info", "local"];
 export interface SiteClassification {
   site_type: SiteType;
   niche: string | null;
+  geo: string | null;
 }
 
 const SYSTEM =
-  "Ты классификатор сайтов. По данным определи тип и нишу. " +
+  "Ты классификатор сайтов. По данным определи тип, нишу и гео (регион/город, если ясно из контента). " +
   "Тип строго один из: ecommerce (интернет-магазин), leadgen (сбор заявок/услуги), " +
   "saas (онлайн-сервис/подписка), info (контент/инфопродукт), local (локальная услуга/заведение). " +
-  'Верни строго JSON: {"site_type":"...","niche":"короткая ниша на русском"}.';
+  'Верни строго JSON: {"site_type":"...","niche":"короткая ниша на русском","geo":"регион/город или null"}.';
 
 export async function classifySite(url: string, e: ExtractedData): Promise<SiteClassification> {
   try {
@@ -39,9 +40,13 @@ export async function classifySite(url: string, e: ExtractedData): Promise<SiteC
 
     const parsed = extractJson(text || "{}") as Partial<SiteClassification>;
     const site_type = TYPES.includes(parsed.site_type as SiteType) ? (parsed.site_type as SiteType) : "leadgen";
-    return { site_type, niche: typeof parsed.niche === "string" ? parsed.niche : null };
+    return {
+      site_type,
+      niche: typeof parsed.niche === "string" ? parsed.niche : null,
+      geo: typeof parsed.geo === "string" ? parsed.geo : null,
+    };
   } catch (err) {
     console.error("[site-type] классификация не удалась, дефолт leadgen:", err);
-    return { site_type: "leadgen", niche: null };
+    return { site_type: "leadgen", niche: null, geo: null };
   }
 }

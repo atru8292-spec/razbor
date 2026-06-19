@@ -13,6 +13,8 @@ export const config = {
   // Конкуренты жёстко 3–5 (раздел 9, дисциплина по деньгам).
   minCompetitors: 3,
   maxCompetitors: 5,
+  // Сколько реально снимать и слать в vision по умолчанию (конфиг до maxCompetitors).
+  competitorSnapTarget: 3,
 
   // Кэш результата по URL ненадолго (раздел 15).
   resultCacheMinutes: 60,
@@ -32,6 +34,9 @@ export const config = {
     mobileWidth: 600,
     maxHeight: 5000, // обрезаем верхней частью: первый экран + структура видны
     jpegQuality: 72,
+    // Конкуренты — мельче целевого сайта.
+    competitorWidth: 700,
+    competitorMaxHeight: 3500,
   },
 } as const;
 
