@@ -5,7 +5,7 @@ import "dotenv/config";
 import express from "express";
 import { env } from "../lib/env";
 import { enqueue } from "./queue";
-import { scrapePage, closeBrowser } from "./browser";
+import { scrapePage, renderPdf, closeBrowser } from "./browser";
 import { ScrapeError } from "./ssrf";
 import type { ScrapeErrorResult } from "../lib/scrape-types";
 
@@ -52,6 +52,22 @@ app.post("/scrape", async (req, res) => {
     console.error("[scraper] неожиданная ошибка:", e);
     const err: ScrapeErrorResult = { ok: false, code: "internal", error: "Внутренняя ошибка скрапера." };
     res.status(500).json(err);
+  }
+});
+
+// PDF-печать страницы результата (раздел 4.9). Разрешаем печатать только наш домен.
+app.post("/pdf", async (req, res) => {
+  const url = typeof req.body?.url === "string" ? req.body.url : "";
+  const allowed = url.startsWith(env.APP_BASE_URL) || url.startsWith("http://localhost") || url.startsWith("http://127.0.0.1");
+  if (!url || !allowed) {
+    return res.status(400).json({ ok: false, error: "Печать разрешена только для страниц приложения." });
+  }
+  try {
+    const pdf = await enqueue(() => renderPdf(url));
+    res.json({ ok: true, pdf: pdf.toString("base64") });
+  } catch (e) {
+    console.error("[scraper] pdf ошибка:", e);
+    res.status(500).json({ ok: false, error: "Не удалось сгенерировать PDF." });
   }
 });
 

@@ -62,17 +62,19 @@ export function Teaser({ teaser }: { teaser: AuditTeaser }) {
 }
 
 // ─── Аннотированный скриншот: картинка целиком + нумерованная легенда ───
-function AnnotatedShot({ screenshots, leaks }: { screenshots: Screenshots; leaks: Finding[] }) {
+function AnnotatedShot({ screenshots, leaks, print = false }: { screenshots: Screenshots; leaks: Finding[]; print?: boolean }) {
   if (!screenshots.desktop) return null;
   const legend = leaks.slice(0, 6);
   return (
     <section className="mt-14">
       <Tag>Ключевые точки потери</Tag>
-      <div className="mt-4 grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-        <div className="max-h-[560px] overflow-y-auto border border-espresso/15 bg-white">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={dataUrl(screenshots.desktop.base64)} alt="Скриншот сайта" className="w-full" />
-        </div>
+      <div className={`mt-4 grid gap-6 ${print ? "" : "md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"}`}>
+        {!print && (
+          <div className="max-h-[560px] overflow-y-auto border border-espresso/15 bg-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={dataUrl(screenshots.desktop.base64)} alt="Скриншот сайта" className="w-full" />
+          </div>
+        )}
         <ol className="space-y-4">
           {legend.map((f, i) => {
             const s = SEVERITY[f.severity as Severity] ?? SEVERITY.medium;
@@ -113,7 +115,7 @@ function FindingCard({ f }: { f: Finding }) {
 const EFFORT_LABEL: Record<string, string> = { low: "быстро", medium: "средне", high: "долго" };
 
 // ─── Полный разбор (после контакта): тон «хорошо → дыры → план» ───
-export function FullReport({ result, screenshots }: { result: AuditResult; screenshots: Screenshots }) {
+export function FullReport({ result, screenshots, print = false }: { result: AuditResult; screenshots: Screenshots; print?: boolean }) {
   const allFindings = (result.areas ?? []).flatMap((a) => a.findings ?? []);
   const strengths = allFindings.filter((f) => f.severity === "ok");
   const leaks = allFindings
@@ -122,7 +124,7 @@ export function FullReport({ result, screenshots }: { result: AuditResult; scree
 
   return (
     <div className="mt-12">
-      {screenshots.desktop && <AnnotatedShot screenshots={screenshots} leaks={leaks} />}
+      {(screenshots.desktop || leaks.length > 0) && <AnnotatedShot screenshots={screenshots} leaks={leaks} print={print} />}
 
       {strengths.length > 0 && (
         <section className="mt-14">

@@ -33,6 +33,25 @@ async function getBrowser(): Promise<Browser> {
   return browser;
 }
 
+/** Печать страницы в PDF тем же Playwright (раздел 4.9/5). url — наша /print/[id]. */
+export async function renderPdf(url: string): Promise<Buffer> {
+  const br = await getBrowser();
+  const ctx = await br.newContext();
+  const page = await ctx.newPage();
+  try {
+    await page.goto(url, { timeout: NAV_TIMEOUT_MS, waitUntil: "load" });
+    await page.waitForLoadState("networkidle", { timeout: 5_000 }).catch(() => {});
+    return await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: { top: "16px", bottom: "16px", left: "16px", right: "16px" },
+    });
+  } finally {
+    await page.close().catch(() => {});
+    await ctx.close().catch(() => {});
+  }
+}
+
 export async function closeBrowser(): Promise<void> {
   if (browser) {
     await browser.close().catch(() => {});

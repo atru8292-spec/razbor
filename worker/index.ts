@@ -5,6 +5,7 @@ import "dotenv/config";
 import { getSupabase } from "../lib/supabase";
 import { config } from "../lib/config";
 import { runPipeline } from "./pipeline";
+import { followupTick } from "../lib/followup";
 
 let running = true;
 
@@ -73,8 +74,23 @@ async function processOne(task: { id: string; url: string; goal: string | null }
   }
 }
 
+// Follow-up цепочка (раздел 12): отдельный крон раз в час, без наложений.
+let followupBusy = false;
+async function followupCron(): Promise<void> {
+  if (followupBusy) return;
+  followupBusy = true;
+  try {
+    await followupTick();
+  } catch (e) {
+    console.error("[worker] followup ошибка:", e);
+  } finally {
+    followupBusy = false;
+  }
+}
+
 async function loop(): Promise<void> {
   console.log("[worker] up, опрашиваю pending-задачи");
+  setInterval(followupCron, 60 * 60 * 1000);
   while (running) {
     try {
       const task = await claimNext();

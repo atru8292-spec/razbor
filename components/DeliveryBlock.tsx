@@ -8,7 +8,7 @@ export interface Delivery {
   telegramDeeplink: string;
 }
 
-export default function DeliveryBlock({ delivery, pdfUrl }: { delivery: Delivery; pdfUrl?: string | null }) {
+export default function DeliveryBlock({ delivery, pdfHref }: { delivery: Delivery; pdfHref: string }) {
   return (
     <section className="mt-8 rounded-lg border border-oxblood/30 bg-white p-6">
       <h3 className="font-display text-xl font-semibold text-espresso">Ваш подарок и отчёт</h3>
@@ -32,16 +32,14 @@ export default function DeliveryBlock({ delivery, pdfUrl }: { delivery: Delivery
         >
           Забрать в Telegram
         </a>
-        {pdfUrl && (
-          <a
-            href={pdfUrl}
-            target="_blank"
-            rel="noopener"
-            className="rounded-md border border-espresso/30 px-5 py-3 text-center font-display text-sm font-semibold uppercase tracking-wide text-espresso transition hover:border-espresso"
-          >
-            Скачать PDF
-          </a>
-        )}
+        <a
+          href={pdfHref}
+          target="_blank"
+          rel="noopener"
+          className="rounded-md border border-espresso/30 px-5 py-3 text-center font-display text-sm font-semibold uppercase tracking-wide text-espresso transition hover:border-espresso"
+        >
+          Скачать PDF
+        </a>
       </div>
     </section>
   );

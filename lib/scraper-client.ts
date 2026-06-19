@@ -36,3 +36,24 @@ export async function scrape(url: string): Promise<ScrapeResult> {
   }
   return data as ScrapeResult;
 }
+
+/** Печать страницы в PDF через скрапер (раздел 4.9). Возвращает байты PDF. */
+export async function renderPdf(url: string): Promise<Buffer> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 60_000);
+  try {
+    const resp = await fetch(`${env.SCRAPER_URL}/pdf`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-scraper-key": env.SCRAPER_KEY ?? "" },
+      body: JSON.stringify({ url }),
+      signal: ctrl.signal,
+    });
+    const data = (await resp.json()) as { ok?: boolean; pdf?: string; error?: string };
+    if (!resp.ok || !data.ok || !data.pdf) {
+      throw new ScraperError(data.error ?? "PDF не сгенерирован.", "pdf_failed");
+    }
+    return Buffer.from(data.pdf, "base64");
+  } finally {
+    clearTimeout(timer);
+  }
+}
