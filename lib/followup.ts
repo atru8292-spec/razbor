@@ -44,7 +44,7 @@ export async function followupTick(): Promise<void> {
         reportUrl: reportUrl(lead.audit_id),
         ownerContact: OWNER_CONTACT,
       });
-      const res = await sendEmail({ to: lead.email, subject, html });
+      const res = await sendEmail({ to: lead.email, subject, html, metadata: { lead_id: lead.id } });
 
       // нет транспорта → не двигаем стадию (отправим, когда настроят Unisender)
       if (res.skipped) {

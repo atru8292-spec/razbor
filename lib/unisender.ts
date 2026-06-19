@@ -14,6 +14,7 @@ export async function sendEmail(params: {
   to: string;
   subject: string;
   html: string;
+  metadata?: Record<string, string>; // вернётся в вебхуках статусов (раздел 14)
 }): Promise<SendResult> {
   if (!env.UNISENDER_GO_API_KEY || !env.EMAIL_FROM) {
     return { ok: false, skipped: true, error: "Unisender Go не настроен (нет ключа/отправителя)." };
@@ -32,6 +33,7 @@ export async function sendEmail(params: {
           from_name: env.EMAIL_FROM_NAME,
           track_links: 1,
           track_read: 1,
+          ...(params.metadata ? { metadata: params.metadata } : {}),
         },
       }),
     });

@@ -62,7 +62,7 @@ export async function deliverGift(lead: LeadForDelivery): Promise<void> {
   // почта
   if (lead.email && !(await alreadySent(lead.id, "email", "gift"))) {
     const { subject, html } = giftEmail(links);
-    const res = await sendEmail({ to: lead.email, subject, html });
+    const res = await sendEmail({ to: lead.email, subject, html, metadata: { lead_id: lead.id } });
     await logDelivery(lead.id, "email", "gift", res.ok ? "sent" : res.skipped ? "skipped" : "failed");
     if (!res.ok && !res.skipped) console.error("[delivery] email:", res.error);
   }

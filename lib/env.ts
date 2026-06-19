@@ -13,6 +13,7 @@ const schema = z.object({
   PERPLEXITY_API_KEY: z.string().optional(),
   PAGESPEED_API_KEY: z.string().optional(),
   UNISENDER_GO_API_KEY: z.string().optional(),
+  UNISENDER_WEBHOOK_SECRET: z.string().optional(), // сверка вебхуков статусов
   EMAIL_FROM: z.string().optional(), // подтверждённый отправитель Unisender Go
   EMAIL_FROM_NAME: z.string().default("RAZBOR"),
   SMS_API_KEY: z.string().optional(),

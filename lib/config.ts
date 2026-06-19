@@ -9,6 +9,7 @@ export const config = {
   maxAuditsPerDay: 100,
   maxIpAuditsPerDay: 5,
   dailyBudgetUsd: 20,
+  estAuditCostUsd: 0.15, // грубая оценка стоимости одного аудита (раздел 15)
 
   // Конкуренты жёстко 3–5 (раздел 9, дисциплина по деньгам).
   minCompetitors: 3,

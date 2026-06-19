@@ -94,7 +94,10 @@ export async function checkAuditStartAllowed(
     .eq("step", "audit_started")
     .gte("created_at", since);
 
-  if ((globalCount ?? 0) >= config.maxAuditsPerDay) {
+  // эффективный дневной потолок = min(лимит по числу, лимит по бюджету) — раздел 14/15
+  const maxByBudget = Math.floor(config.dailyBudgetUsd / config.estAuditCostUsd);
+  const dailyCap = Math.min(config.maxAuditsPerDay, maxByBudget);
+  if ((globalCount ?? 0) >= dailyCap) {
     return { allowed: false, reason: "Сегодня сервис принял максимум проверок. Загляните завтра." };
   }
 
