@@ -24,6 +24,8 @@ next-env.d.ts
 /artifacts
 /tmp
 *.pdf
+# ...но файл подарка отдаётся из public/ и должен деплоиться через git
+!public/gift/*.pdf
 
 # logs
 *.log
