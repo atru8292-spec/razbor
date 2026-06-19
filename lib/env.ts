@@ -7,6 +7,8 @@ const schema = z.object({
   SUPABASE_URL: z.string().url().optional(),
   SUPABASE_SERVICE_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
+  OPENAI_VISION_MODEL: z.string().default("gpt-5.4"),
+  OPENAI_LIGHT_MODEL: z.string().default("gpt-5.4-mini"),
   PERPLEXITY_API_KEY: z.string().optional(),
   PAGESPEED_API_KEY: z.string().optional(),
   UNISENDER_GO_API_KEY: z.string().optional(),

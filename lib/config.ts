@@ -19,6 +19,20 @@ export const config = {
 
   // Follow-up: касания по дням (раздел 12).
   followupDays: [0, 2, 6] as const,
+
+  // Воркер аудитов.
+  worker: {
+    pollIntervalMs: 4000, // как часто опрашивать pending-задачи в простое
+    pagespeedTimeoutMs: 30_000,
+  },
+
+  // Скрины перед vision — уменьшаем, чтобы не жечь токены (раздел 15).
+  visionImage: {
+    desktopWidth: 1000,
+    mobileWidth: 600,
+    maxHeight: 5000, // обрезаем верхней частью: первый экран + структура видны
+    jpegQuality: 72,
+  },
 } as const;
 
 export type AppConfig = typeof config;
