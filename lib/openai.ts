@@ -7,7 +7,17 @@ let client: OpenAI | null = null;
 
 export function getOpenAI(): OpenAI {
   if (!client) {
-    client = new OpenAI({ apiKey: requireEnv("OPENAI_API_KEY") });
+    // ВАЖНО: по умолчанию SDK на Node ходит через bundled node-fetch + agentkeepalive,
+    // что на нашем VPS рвёт длинный ответ Responses API ("Premature close").
+    // Передаём нативный fetch Node 22 (undici) — он сам управляет соединениями и не страдает этим.
+    if (typeof globalThis.fetch !== "function") {
+      throw new Error("Нужен Node 18+ с нативным fetch (на сервере — Node 22).");
+    }
+    client = new OpenAI({
+      apiKey: requireEnv("OPENAI_API_KEY"),
+      fetch: globalThis.fetch as unknown as OpenAI["fetch"],
+      maxRetries: 2,
+    });
   }
   return client;
 }
