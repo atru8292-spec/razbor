@@ -51,7 +51,7 @@ export default function UrlForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="w-full max-w-xl">
+    <form onSubmit={onSubmit} className="w-full max-w-2xl">
       <div className="flex flex-col gap-3 sm:flex-row">
         <input
           type="text"
@@ -60,12 +60,12 @@ export default function UrlForm() {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           disabled={busy}
-          className="flex-1 rounded-md border border-espresso/20 bg-white px-4 py-3 font-sans text-espresso outline-none focus:border-oxblood"
+          className="flex-1 border-[1.5px] border-ink bg-transparent px-5 py-4 font-sans text-lg text-ink outline-none transition placeholder:text-ink-soft/50 focus:border-oxblood"
         />
         <button
           type="submit"
           disabled={busy}
-          className="rounded-md bg-oxblood px-6 py-3 font-display font-semibold uppercase tracking-wide text-paper transition hover:opacity-90 disabled:opacity-50"
+          className="bg-oxblood px-7 py-4 font-display text-base font-bold uppercase tracking-wide text-paper transition hover:bg-oxblood-deep disabled:opacity-50"
         >
           {busy ? "Запускаю…" : "Проверить сайт"}
         </button>
@@ -76,7 +76,7 @@ export default function UrlForm() {
           value={goal}
           onChange={(e) => setGoal(e.target.value)}
           disabled={busy}
-          className="rounded-md border border-espresso/20 bg-white px-3 py-2 font-sans text-sm text-espresso/80 outline-none focus:border-oxblood"
+          className="border-[1.5px] border-line bg-transparent px-3 py-2 font-sans text-sm text-ink-soft outline-none focus:border-oxblood"
         >
           <option value="">Главная цель сайта (необязательно)</option>
           {GOAL_OPTIONS.map((g) => (
@@ -85,7 +85,7 @@ export default function UrlForm() {
             </option>
           ))}
         </select>
-        <div className="scale-90 origin-left">
+        <div className="origin-left scale-90">
           <Turnstile onToken={setToken} />
         </div>
       </div>
