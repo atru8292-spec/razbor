@@ -2,13 +2,24 @@
 
 import Tag from "./ui/Tag";
 
-// Экран ожидания с предвкушением (раздел 13.3): этапы + живое превью скриншота.
+// Экран ожидания с предвкушением (§4): крупные этапы, линия-прогресс, превью, теги.
 const STAGES = [
   { match: "Снимаю сайт", label: "Снимаем сайт" },
   { match: "тип", label: "Определяем тип" },
   { match: "скорость", label: "Считаем скорость" },
   { match: "онкурент", label: "Ищем конкурентов" },
   { match: "Анализ", label: "Анализируем выдачу" },
+];
+
+const CHECK_TAGS = [
+  "Первый экран",
+  "Ценность",
+  "Структура",
+  "Доверие",
+  "Путь к заявке",
+  "Мобайл",
+  "Скорость",
+  "ИИ-видимость",
 ];
 
 function activeIndex(progress: string | null): number {
@@ -27,47 +38,72 @@ export default function WaitingScreen({
   preview?: string;
 }) {
   const active = activeIndex(progress);
+  const fillPct = STAGES.length > 1 ? (active / (STAGES.length - 1)) * 100 : 0;
 
   return (
-    <div className="mt-12 grid gap-10 md:grid-cols-[1fr_auto] md:items-start">
+    <div className="mt-12 grid gap-12 md:grid-cols-[1fr_360px] md:items-start">
       <div>
         <Tag>Идёт разбор</Tag>
-        <h1 className="mt-3 font-display text-3xl font-bold text-espresso">Проверяем сайт…</h1>
-        {url && <p className="mt-1 font-sans text-sm text-espresso/50">{url}</p>}
+        <h1 className="mt-4 font-display font-black leading-[0.95] text-ink" style={{ fontSize: "clamp(2.5rem, 6vw, 4.5rem)" }}>
+          Проверяем сайт…
+        </h1>
+        {url && <p className="mt-2 font-sans text-sm text-ink-soft">{url}</p>}
 
-        <ol className="mt-8 space-y-3">
-          {STAGES.map((s, i) => {
-            const state = i < active ? "done" : i === active ? "active" : "pending";
-            return (
-              <li key={i} className="flex items-center gap-3">
-                <span
-                  className={
-                    state === "done"
-                      ? "h-2.5 w-2.5 rounded-full bg-oxblood"
-                      : state === "active"
-                        ? "h-2.5 w-2.5 animate-pulse rounded-full bg-oxblood"
-                        : "h-2.5 w-2.5 rounded-full border border-espresso/30"
-                  }
-                />
-                <span className={`font-sans text-sm ${state === "pending" ? "text-espresso/40" : "text-espresso"}`}>
-                  {s.label}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-        <p className="mt-6 font-sans text-xs text-espresso/45">Обычно занимает пару минут. Можно не закрывать страницу.</p>
+        {/* этапы с вертикальной линией-прогрессом */}
+        <div className="relative mt-10 pl-8">
+          <div className="absolute left-[7px] top-1 bottom-1 w-0.5 bg-line" />
+          <div className="absolute left-[7px] top-1 w-0.5 bg-oxblood transition-[height] duration-500" style={{ height: `calc(${fillPct}% )` }} />
+          <ol className="space-y-6">
+            {STAGES.map((s, i) => {
+              const state = i < active ? "done" : i === active ? "active" : "pending";
+              return (
+                <li key={i} className="relative">
+                  <span
+                    className={
+                      "absolute -left-8 top-1 block h-4 w-4 rounded-full border-2 " +
+                      (state === "done"
+                        ? "border-oxblood bg-oxblood"
+                        : state === "active"
+                          ? "border-oxblood bg-paper softpulse"
+                          : "border-line bg-paper")
+                    }
+                  />
+                  <span
+                    className={
+                      state === "active"
+                        ? "font-display text-xl font-extrabold text-oxblood softpulse"
+                        : state === "done"
+                          ? "font-sans text-ink"
+                          : "font-sans text-ink-soft/50"
+                    }
+                  >
+                    {s.label}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+
+        <p className="mt-10 font-sans text-sm text-ink-soft">Обычно пара минут — можно не закрывать страницу.</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {CHECK_TAGS.map((t) => (
+            <span key={t} className="border border-line px-2.5 py-1 font-sans text-xs text-ink-soft">
+              {t}
+            </span>
+          ))}
+        </div>
       </div>
 
-      <div className="w-full max-w-[280px] justify-self-center">
+      <div className="w-full justify-self-center">
         <Tag>Ваш сайт</Tag>
-        <div className="mt-2 aspect-[3/4] overflow-hidden border border-espresso/15 bg-white">
+        <div className="reveal is-in mt-3 aspect-[3/4] overflow-hidden border border-line bg-white">
           {preview ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={`data:image/jpeg;base64,${preview}`} alt="Превью сайта" className="w-full" />
           ) : (
             <div className="flex h-full items-center justify-center">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-espresso/20 border-t-oxblood" />
+              <div className="h-7 w-7 animate-spin rounded-full border-2 border-line border-t-oxblood" />
             </div>
           )}
         </div>

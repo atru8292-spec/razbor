@@ -37,4 +37,18 @@ body {
     opacity: 1;
     transform: none;
   }
+
+  /* Мягкий пульс текущего этапа ожидания (§4). */
+  @keyframes softpulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.55;
+    }
+  }
+  .softpulse {
+    animation: softpulse 1.5s ease-in-out infinite;
+  }
 }
