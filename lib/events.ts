@@ -12,7 +12,8 @@ export type EventStep =
   | "contact_abandoned"
   | "report_viewed"
   | "pdf_downloaded"
-  | "followup_clicked";
+  | "followup_clicked"
+  | "tg_started"; // пользователь открыл бота по диплинку (храним chat_id в meta)
 
 export async function logEvent(
   step: EventStep,

@@ -20,8 +20,8 @@ export const config = {
   // Кэш результата по URL ненадолго (раздел 15).
   resultCacheMinutes: 60,
 
-  // Follow-up: касания по дням (раздел 12).
-  followupDays: [0, 2, 6] as const,
+  // Follow-up: касания по дням (REDESIGN §9). Индекс = номер касания (0/1/2/3).
+  followupDays: [0, 2, 4, 7] as const,
 
   // Воркер аудитов.
   worker: {

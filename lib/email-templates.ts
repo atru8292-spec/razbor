@@ -33,47 +33,53 @@ export function giftEmail(params: { reportUrl: string; giftUrl: string }): { sub
     </p>
     <p style="margin:0 0 16px;">${button(params.reportUrl, "Открыть разбор")}</p>
     <p style="margin:0 0 24px;">${button(params.giftUrl, "Скачать чек-лист")}</p>
-    <p style="font-size:13px;line-height:1.6;color:rgba(54,32,23,0.65);margin:0;">
-      Если нужно помочь с правками — ответьте на это письмо.
+    <p style="font-size:14px;line-height:1.6;margin:0;">
+      Загляните в разбор — там сразу видно главную утечку. Через пару дней напишу, с чего бы я начала чинить ваш сайт.
     </p>`;
   return { subject: "Ваш разбор сайта и подарок — RAZBOR", html: shell(inner) };
 }
 
-// Follow-up касания (раздел 12). touch 1 — «с чего бы начала», touch 2 — кейс. Свои шаблоны.
+// Follow-up касания (REDESIGN §9). Дни 2/4/7, у каждого письма своя работа.
 export function followupEmail(
-  touch: 1 | 2,
-  params: { reportUrl: string; ownerContact: string },
+  touch: 1 | 2 | 3,
+  params: { reportUrl: string; ownerContact: string; topPriority?: string | null },
 ): { subject: string; html: string } {
   if (touch === 1) {
+    const main = params.topPriority
+      ? `Если коротко — главное в вашем случае это: <b>${escapeHtml(params.topPriority)}</b>. С этого я бы и начала.`
+      : `Если коротко — больше всего заявок обычно вытягивает первый экран и прямой путь к заявке.`;
     const inner = `
-      <h1 style="font-size:23px;margin:0 0 16px;color:${ESPRESSO};">С чего я бы начала</h1>
+      <h1 style="font-size:23px;margin:0 0 16px;color:${ESPRESSO};">Посмотрели разбор?</h1>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">${main}</p>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 24px;">Остальное — по приоритету прямо в разборе.</p>
+      <p style="margin:0;">${button(params.reportUrl, "Открыть разбор")}</p>`;
+    return { subject: "С чего бы я начала чинить ваш сайт", html: shell(inner) };
+  }
+  if (touch === 2) {
+    const inner = `
+      <h1 style="font-size:23px;margin:0 0 16px;color:${ESPRESSO};">Как выглядит сайт, который не теряет заявки</h1>
       <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
-        Вы недавно проверили сайт. Если коротко — наибольший прирост заявок обычно даёт
-        первый экран и путь к действию: понятный оффер, один CTA, убранное трение в форме.
+        Без магии: понятный первый экран (что это, для кого, сколько стоит), один очевидный шаг к заявке
+        и доверие рядом с кнопкой — отзывы, гарантии, ответы на частые вопросы.
       </p>
       <p style="font-size:15px;line-height:1.6;margin:0 0 24px;">
-        В вашем разборе всё расписано по элементам и приоритетам.
+        Когда эти три вещи на месте, посетитель не уходит «подумать» — он оставляет заявку.
       </p>
-      <p style="margin:0 0 24px;">${button(params.reportUrl, "Открыть разбор")}</p>
-      <p style="font-size:14px;line-height:1.6;margin:0;">
-        Хотите, чтобы это починили под ключ? ${link(params.ownerContact, "Напишите мне")}.
-      </p>`;
-    return { subject: "С чего начать, чтобы сайт приносил больше заявок", html: shell(inner) };
+      <p style="margin:0;">${link(params.reportUrl, "Перечитать ваш разбор")}</p>`;
+    return { subject: "Что отличает сайт, который приносит заявки", html: shell(inner) };
   }
   const inner = `
-    <h1 style="font-size:23px;margin:0 0 16px;color:${ESPRESSO};">Как это работает на практике</h1>
+    <h1 style="font-size:23px;margin:0 0 16px;color:${ESPRESSO};">Пройдусь по вашему сайту лично</h1>
     <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
-      Перепаковка первого экрана, доверие и упрощение пути к заявке обычно дают ощутимый
-      рост конверсии уже в первые недели после редизайна.
+      Хотите, лично посмотрю ваш сайт и соберу план правок под вас? Это 20 минут и бесплатно —
+      просто разберём, что починить первым.
     </p>
-    <p style="font-size:15px;line-height:1.6;margin:0 0 24px;">
-      Если хотите такой результат для своего сайта — давайте обсудим, что и в каком порядке делать.
-    </p>
-    <p style="margin:0 0 8px;">${button(params.ownerContact, "Обсудить редизайн")}</p>
-    <p style="font-size:13px;line-height:1.6;color:rgba(54,32,23,0.65);margin:16px 0 0;">
-      Ваш разбор всегда здесь: ${link(params.reportUrl, "открыть")}.
-    </p>`;
-  return { subject: "Что даёт редизайн — и стоит ли он того", html: shell(inner) };
+    <p style="margin:0 0 8px;">${button(params.ownerContact, "Написать и договориться")}</p>`;
+  return { subject: "Соберу план правок под ваш сайт — 20 минут, бесплатно", html: shell(inner) };
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] ?? c);
 }
 
 function link(href: string, label: string): string {

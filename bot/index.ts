@@ -6,23 +6,23 @@ import { Telegraf } from "telegraf";
 import { env } from "../lib/env";
 import { getSupabase } from "../lib/supabase";
 import { giftUrl, reportUrl, logDelivery } from "../lib/delivery";
+import { logEvent } from "../lib/events";
 
-export async function handleStart(token: string | undefined): Promise<string> {
+// Касание 0 в боте (REDESIGN §9): живо, с тизером следующего касания.
+// token = lead.id; chatId сохраняем в events(tg_started) для telegram-догонов.
+export async function handleStart(token: string | undefined, chatId?: number): Promise<string> {
   if (!token) {
     return "Это бот сервиса RAZBOR. Чтобы забрать разбор и подарок — перейдите по ссылке со страницы результата.";
   }
-  // токен = lead.id
-  const { data: lead } = await getSupabase()
-    .from("leads")
-    .select("id, audit_id")
-    .eq("id", token)
-    .single();
-
+  const { data: lead } = await getSupabase().from("leads").select("id, audit_id").eq("id", token).single();
   if (!lead || !lead.audit_id) {
     return "Не нашли ваш разбор по ссылке. Откройте результат на сайте и нажмите «Забрать в Telegram» ещё раз.";
   }
 
-  // лог без дублей
+  // сохраняем chat_id для будущих касаний + лог выдачи (без дублей)
+  if (chatId != null) {
+    await logEvent("tg_started", { auditId: lead.audit_id, leadId: lead.id, meta: { chat_id: chatId } });
+  }
   const { data: already } = await getSupabase()
     .from("emails_log")
     .select("id")
@@ -35,13 +35,29 @@ export async function handleStart(token: string | undefined): Promise<string> {
   }
 
   return [
-    "Готово! Ваш разбор и подарок 🎁",
+    "Рада помочь! Держите ваш разбор и подарок 🎁",
     "",
     `📊 Полный разбор: ${reportUrl(lead.audit_id)}`,
     `📄 Чек-лист «Где сайт теряет заявки»: ${giftUrl()}`,
     "",
-    "Если нужна помощь с правками — напишите мне здесь.",
+    "Загляните в разбор — там сразу видно главную утечку.",
+    "Через пару дней напишу, с чего бы я начала чинить ваш сайт.",
   ].join("\n");
+}
+
+/** Лид написал боту → останавливаем цепочку (engaged, §9). Возвращает true, если нашли лид. */
+async function markEngagedByChat(chatId: number): Promise<boolean> {
+  const { data } = await getSupabase()
+    .from("events")
+    .select("lead_id")
+    .eq("step", "tg_started")
+    .filter("meta->>chat_id", "eq", String(chatId))
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const leadId = data?.[0]?.lead_id;
+  if (!leadId) return false;
+  await getSupabase().from("leads").update({ status: "engaged" }).eq("id", leadId);
+  return true;
 }
 
 async function main() {
@@ -56,7 +72,7 @@ async function main() {
   bot.start(async (ctx) => {
     try {
       const token = ctx.startPayload?.trim() || undefined;
-      const reply = await handleStart(token);
+      const reply = await handleStart(token, ctx.chat?.id);
       await ctx.reply(reply, { link_preview_options: { is_disabled: true } });
     } catch (e) {
       console.error("[bot] ошибка /start:", e);
@@ -64,7 +80,19 @@ async function main() {
     }
   });
 
-  bot.on("message", (ctx) => ctx.reply("Чтобы получить разбор — перейдите по ссылке «Забрать в Telegram» со страницы результата."));
+  // Любое сообщение (не /start) = человек ответил → стоп цепочки + передаём Арине.
+  bot.on("message", async (ctx) => {
+    try {
+      const found = await markEngagedByChat(ctx.chat.id);
+      await ctx.reply(
+        found
+          ? "Спасибо, что написали! Передаю Арине — она ответит и подскажет по вашему сайту."
+          : "Чтобы получить разбор — перейдите по ссылке «Забрать в Telegram» со страницы результата.",
+      );
+    } catch (e) {
+      console.error("[bot] ошибка message:", e);
+    }
+  });
 
   // bot.launch() резолвится только при остановке бота — НЕ await-аем.
   bot.launch().catch((e) => {
