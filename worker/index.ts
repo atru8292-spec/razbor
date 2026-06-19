@@ -12,6 +12,11 @@ async function setProgress(id: string, progress: string): Promise<void> {
   await getSupabase().from("audits").update({ progress }).eq("id", id);
 }
 
+// Превью для экрана ожидания пишем в screenshots.preview (перезапишется финальными при done).
+async function savePreview(id: string, base64: string): Promise<void> {
+  await getSupabase().from("audits").update({ screenshots: { preview: base64 } }).eq("id", id);
+}
+
 /** Атомарно застолбить самый старый pending. Возвращает задачу или null. */
 async function claimNext(): Promise<{ id: string; url: string; goal: string | null } | null> {
   const sb = getSupabase();
@@ -40,7 +45,11 @@ async function claimNext(): Promise<{ id: string; url: string; goal: string | nu
 async function processOne(task: { id: string; url: string; goal: string | null }): Promise<void> {
   console.log(`[worker] аудит ${task.id} — ${task.url}`);
   try {
-    const out = await runPipeline(task, (p) => setProgress(task.id, p));
+    const out = await runPipeline(
+      task,
+      (p) => setProgress(task.id, p),
+      (b64) => savePreview(task.id, b64),
+    );
     await getSupabase()
       .from("audits")
       .update({

@@ -111,10 +111,21 @@ async function gatherCompetitors(
 export async function runPipeline(
   audit: { id: string; url: string; goal: string | null },
   setProgress: (p: string) => Promise<void>,
+  savePreview?: (b64: string) => Promise<void>,
 ): Promise<PipelineOutput> {
   // 2. Скрапер
   await setProgress("Снимаю сайт…");
   const scraped = await scrape(audit.url);
+
+  // живое превью на экран ожидания — сразу после снятия (раздел 13.3)
+  if (savePreview) {
+    try {
+      const preview = await resizeForVision(scraped.desktop.base64, 400, 1200);
+      await savePreview(preview.base64);
+    } catch (e) {
+      console.error("[pipeline] превью не сохранено:", e);
+    }
+  }
 
   // 3. Тип сайта + ниша + гео
   await setProgress("Определяю тип сайта…");

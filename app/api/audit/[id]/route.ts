@@ -13,13 +13,15 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
   const { data: audit, error } = await sb
     .from("audits")
-    .select("id, url, status, progress, result, screenshots, error_message")
+    .select("id, url, status, progress, result, screenshots, pdf_url, error_message")
     .eq("id", id)
     .single();
 
   if (error || !audit) {
     return NextResponse.json({ error: "Проверка не найдена." }, { status: 404 });
   }
+
+  const screenshots = (audit.screenshots ?? {}) as { preview?: string };
 
   const resp: Record<string, unknown> = {
     status: audit.status,
@@ -28,9 +30,15 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     error: audit.error_message ?? null,
   };
 
+  // живое превью на экране ожидания (раздел 13.3)
+  if ((audit.status === "running" || audit.status === "pending") && screenshots.preview) {
+    resp.preview = screenshots.preview;
+  }
+
   if (audit.status === "done" && audit.result) {
     const result = audit.result as AuditResult;
     resp.teaser = toTeaser(result);
+    resp.pdfUrl = audit.pdf_url ?? null;
 
     const { data: leads } = await sb.from("leads").select("id").eq("audit_id", id).limit(1);
     const lead = leads?.[0];

@@ -4,9 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { track } from "@/lib/client-events";
-import { Teaser, FullReport } from "@/components/AuditView";
+import { Teaser, FullReport, type Screenshots } from "@/components/AuditView";
 import ContactGate from "@/components/ContactGate";
 import DeliveryBlock, { type Delivery } from "@/components/DeliveryBlock";
+import WaitingScreen from "@/components/WaitingScreen";
 import type { AuditResult, AuditTeaser } from "@/lib/audit-types";
 
 interface AuditStatus {
@@ -14,13 +15,14 @@ interface AuditStatus {
   progress: string | null;
   url: string;
   error: string | null;
+  preview?: string;
   teaser?: AuditTeaser;
   unlocked?: boolean;
   full?: AuditResult;
+  screenshots?: Screenshots;
   delivery?: Delivery;
+  pdfUrl?: string | null;
 }
-
-const STAGE_HINT = "Снимаем сайт, считаем метрики и анализируем — обычно пара минут.";
 
 export default function AuditPage() {
   const { id } = useParams<{ id: string }>();
@@ -34,13 +36,13 @@ export default function AuditPage() {
       const res = await fetch(`/api/audit/${id}`, { cache: "no-store" });
       if (!res.ok) {
         setFetchError("Проверка не найдена.");
-        return true; // стоп
+        return true;
       }
       const json: AuditStatus = await res.json();
       setData(json);
       return json.status === "done" || json.status === "error";
     } catch {
-      return false; // сеть моргнула — продолжаем поллинг
+      return false;
     }
   }, [id]);
 
@@ -58,7 +60,6 @@ export default function AuditPage() {
     };
   }, [poll]);
 
-  // события воронки
   useEffect(() => {
     if (data?.teaser && !teaserTracked.current) {
       teaserTracked.current = true;
@@ -74,46 +75,46 @@ export default function AuditPage() {
     poll();
   }, [poll]);
 
+  const waiting = !data || data.status === "pending" || data.status === "running";
+
   return (
-    <main className="mx-auto max-w-3xl px-6 py-12">
-      <Link href="/" className="font-display text-sm uppercase tracking-[0.3em] text-oxblood">
-        Razbor
+    <main className="mx-auto max-w-4xl px-6 py-10">
+      <Link href="/" className="font-display text-sm font-bold uppercase tracking-[0.35em] text-oxblood">
+        RAZBOR
       </Link>
 
       {fetchError && <p className="mt-10 font-sans text-espresso">{fetchError}</p>}
 
-      {!fetchError && (!data || data.status === "pending" || data.status === "running") && (
-        <div className="mt-16 text-center">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-espresso/20 border-t-oxblood" />
-          <h1 className="mt-6 font-display text-2xl font-semibold text-espresso">Проверяем сайт…</h1>
-          <p className="mt-2 font-sans text-espresso/70">{data?.progress || STAGE_HINT}</p>
-          {data?.url && <p className="mt-1 font-sans text-sm text-espresso/50">{data.url}</p>}
-        </div>
-      )}
+      {!fetchError && waiting && <WaitingScreen progress={data?.progress ?? null} url={data?.url} preview={data?.preview} />}
 
       {!fetchError && data?.status === "error" && (
-        <div className="mt-16 text-center">
+        <div className="mt-20 border-l-2 border-oxblood pl-6">
           <h1 className="font-display text-2xl font-semibold text-espresso">Не удалось проверить сайт</h1>
           <p className="mt-2 font-sans text-espresso/70">{data.error || "Попробуйте другой адрес."}</p>
+          <Link href="/" className="mt-5 inline-block font-sans text-sm text-oxblood underline">
+            Проверить другой сайт
+          </Link>
         </div>
       )}
 
       {!fetchError && data?.status === "done" && data.teaser && (
         <div className="mt-10">
-          <h1 className="font-display text-2xl font-semibold text-espresso">Разбор сайта</h1>
-          {data.url && <p className="mt-1 font-sans text-sm text-espresso/50">{data.url}</p>}
+          <div className="flex items-baseline justify-between gap-4 border-b border-espresso/15 pb-4">
+            <h1 className="font-display text-3xl font-bold text-espresso">Разбор сайта</h1>
+            {data.url && <span className="font-sans text-sm text-espresso/50">{prettyUrl(data.url)}</span>}
+          </div>
 
-          <div className="mt-6">
+          <div className="mt-8">
             <Teaser teaser={data.teaser} />
           </div>
 
           {data.unlocked && data.full ? (
             <>
-              {data.delivery && <DeliveryBlock delivery={data.delivery} />}
-              <FullReport result={data.full} />
+              {data.delivery && <DeliveryBlock delivery={data.delivery} pdfUrl={data.pdfUrl ?? null} />}
+              <FullReport result={data.full} screenshots={data.screenshots ?? {}} />
             </>
           ) : (
-            <div className="mt-10">
+            <div className="mt-12">
               <ContactGate auditId={id} onUnlocked={refresh} />
             </div>
           )}
@@ -121,4 +122,12 @@ export default function AuditPage() {
       )}
     </main>
   );
+}
+
+function prettyUrl(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
 }
