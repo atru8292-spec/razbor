@@ -116,15 +116,31 @@ function AreaAccordion({ area, forceOpen }: { area: Area; forceOpen: boolean }) 
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-4 py-5 text-left"
+        className="group flex w-full items-center justify-between gap-4 py-5 text-left"
       >
-        <span className="font-display text-lg font-extrabold text-ink sm:text-xl">{area.title}</span>
-        <span className="flex items-center gap-5">
-          <span className="hidden font-sans text-xs uppercase tracking-wide text-ink-soft sm:inline">
+        <span className="font-display text-lg font-extrabold text-ink transition-colors group-hover:text-oxblood sm:text-xl">
+          {area.title}
+        </span>
+        <span className="flex items-center gap-3 sm:gap-5">
+          <span className={`font-sans text-xs font-semibold ${leaks.length ? "text-oxblood" : "text-ink-soft"}`}>
             {leaks.length ? plural(leaks.length) : "без проблем"}
           </span>
           <span className={`font-display text-2xl font-black leading-none ${low ? "text-oxblood" : "text-ink"}`}>{area.score}</span>
-          <span className={`font-display text-xl text-ink-soft transition-transform duration-300 ${open ? "rotate-45" : ""}`}>+</span>
+          <span className="flex shrink-0 items-center gap-1.5 text-ink-soft transition-colors group-hover:text-oxblood">
+            <span className="hidden font-sans text-xs uppercase tracking-wide sm:inline">{open ? "свернуть" : "развернуть"}</span>
+            <svg
+              className={`h-5 w-5 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </span>
         </span>
       </button>
       <div className={`grid transition-[grid-template-rows] duration-300 ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
@@ -221,8 +237,8 @@ export function FullReport({ result, screenshots, print = false }: { result: Aud
       <section className="mt-24">
         <Tag>Разбор по направлениям</Tag>
         <div className="mt-5 border-t border-line">
-          {(result.areas ?? []).map((area) => (
-            <AreaAccordion key={area.key} area={area} forceOpen={print} />
+          {(result.areas ?? []).map((area, i) => (
+            <AreaAccordion key={area.key} area={area} forceOpen={print || i === 0} />
           ))}
         </div>
       </section>
