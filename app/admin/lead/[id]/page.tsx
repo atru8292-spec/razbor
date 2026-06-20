@@ -4,6 +4,7 @@ import { getSupabase } from "@/lib/supabase";
 import type { AuditResult } from "@/lib/audit-types";
 import Tag from "@/components/ui/Tag";
 import StatusSelect from "@/components/admin/StatusSelect";
+import BotChat, { type ChatMsg } from "@/components/admin/BotChat";
 import { channelRu, siteTypeRu, statusRu, sourceRu, relTime } from "../../labels";
 
 // Шаги пути лида по-человечески (часть G). bot_message не показываем — он в переписке.
@@ -33,7 +34,7 @@ export const dynamic = "force-dynamic";
 interface ChatRow {
   id: string;
   created_at: string;
-  meta: { dir?: "in" | "out"; text?: string } | null;
+  meta: { dir?: "in" | "out"; text?: string; auto?: boolean } | null;
 }
 
 function Score({ label, value }: { label: string; value: number | undefined }) {
@@ -204,34 +205,21 @@ export default async function LeadCardPage({ params }: { params: Promise<{ id: s
         )}
       </section>
 
-      {/* Переписка с ботом (часть H) */}
+      {/* Переписка с ботом — вид мессенджера (BOT.md часть 2) */}
       <section className="mt-10">
         <Tag>Переписка с ботом</Tag>
-        {chat.length > 0 ? (
-          <div className="mt-4 space-y-2.5">
-            {chat.map((m) => {
-              const out = m.meta?.dir === "out"; // out = бот, in = человек
-              return (
-                <div key={m.id} className={`flex ${out ? "justify-start" : "justify-end"}`}>
-                  <div
-                    className={`max-w-[80%] whitespace-pre-wrap border px-3 py-2 font-sans text-sm ${
-                      out ? "border-espresso/15 text-espresso/80" : "border-oxblood/30 bg-oxblood/[0.06] text-espresso"
-                    }`}
-                  >
-                    <div className="mb-1 font-sans text-[0.7rem] uppercase tracking-[0.08em] text-espresso/40">
-                      {out ? "бот" : contact} · <span title={new Date(m.created_at).toLocaleString("ru-RU")}>{relTime(m.created_at)}</span>
-                    </div>
-                    {m.meta?.text ?? ""}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="mt-4 font-sans text-sm text-espresso/45">
-            Переписки пока нет. Появится, когда человек напишет боту.
-          </p>
-        )}
+        <BotChat
+          contactName={contact}
+          messages={chat.map(
+            (m): ChatMsg => ({
+              id: m.id,
+              created_at: m.created_at,
+              dir: m.meta?.dir === "out" ? "out" : "in",
+              text: m.meta?.text ?? "",
+              auto: m.meta?.auto === true,
+            }),
+          )}
+        />
       </section>
     </main>
   );

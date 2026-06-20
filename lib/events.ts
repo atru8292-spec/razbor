@@ -41,6 +41,7 @@ export async function logBotMessage(
   dir: "in" | "out",
   text: string,
   chatId?: number | string | null,
+  auto?: boolean, // касание ушло по расписанию (для пометки «авто» в карточке, BOT.md ч.2)
 ): Promise<void> {
   try {
     await getSupabase()
@@ -48,7 +49,7 @@ export async function logBotMessage(
       .insert({
         step: "bot_message",
         lead_id: leadId,
-        meta: { dir, text, ...(chatId != null ? { chat_id: chatId } : {}) },
+        meta: { dir, text, ...(chatId != null ? { chat_id: chatId } : {}), ...(auto ? { auto: true } : {}) },
       });
   } catch (e) {
     console.error("[events] не удалось записать bot_message:", e);

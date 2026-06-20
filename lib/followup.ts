@@ -118,7 +118,7 @@ export async function followupTick(): Promise<void> {
         const tgText = botText(touch, { reportUrl: link, finding });
         const res = await sendTelegramMessage(chatId, tgText);
         await logFollowup(lead.id, "telegram", res.ok ? "sent" : res.skipped ? "skipped" : "failed");
-        if (res.ok) await logBotMessage(lead.id, "out", tgText, chatId); // в ленту переписки (часть H)
+        if (res.ok) await logBotMessage(lead.id, "out", tgText, chatId, true); // авто-касание по расписанию
         if (!res.skipped) realAttempt = true;
       }
 
