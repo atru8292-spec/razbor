@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 // Политика конфиденциальности (152-ФЗ). Шаблон — перед боевым приёмом контактов вычитать.
-export const metadata = { title: "Политика конфиденциальности — RAZBOR" };
+export const metadata = {
+  title: { absolute: "Политика конфиденциальности — Razbor" },
+  robots: { index: false, follow: true },
+};
 
 const EMAIL = "atru8292@gmail.com";
 
