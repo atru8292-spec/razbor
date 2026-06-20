@@ -1,5 +1,6 @@
 import Link from "next/link";
 import UrlForm from "@/components/UrlForm";
+import StickyCta from "@/components/StickyCta";
 import Tag from "@/components/ui/Tag";
 import Reveal from "@/components/ui/Reveal";
 
@@ -74,6 +75,21 @@ export default function Home() {
         </p>
         <div id="audit" className="mt-10 scroll-mt-24">
           <UrlForm />
+          <p className="mt-3 font-sans text-sm text-ink-soft">Бесплатно. Результат за пару минут. Без регистрации.</p>
+          <div className="mt-7 max-w-lg border-t border-line pt-6">
+            <p className="font-sans text-xs uppercase tracking-[0.14em] text-ink-soft">Что получите за пару минут</p>
+            <ul className="mt-3 space-y-2 font-sans text-[0.95rem] text-ink">
+              <li className="flex gap-3">
+                <span className="font-display font-bold text-oxblood">1</span>Главную утечку — где именно сайт теряет заявки
+              </li>
+              <li className="flex gap-3">
+                <span className="font-display font-bold text-oxblood">2</span>Оценки по 8 направлениям — от первого экрана до нейропоиска
+              </li>
+              <li className="flex gap-3">
+                <span className="font-display font-bold text-oxblood">3</span>План правок по приоритету — что чинить первым
+              </li>
+            </ul>
+          </div>
         </div>
       </section>
 
@@ -89,6 +105,21 @@ export default function Home() {
           <div className="mt-10 border border-line bg-white p-2 shadow-[0_8px_30px_rgba(78,0,0,0.06)]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/example-report.png" alt="Пример разбора сайта" loading="lazy" className="w-full" />
+          </div>
+          {/* расшифровка демо — продаёт пользу, не только вид */}
+          <div className="mt-6 max-w-2xl space-y-2.5 font-sans text-[0.95rem] leading-relaxed text-ink">
+            <p>
+              <span className="text-xs uppercase tracking-[0.12em] text-ink-soft">Что нашли — </span>
+              сайт продаёт атмосферу, но не показывает цену и условия бронирования.
+            </p>
+            <p>
+              <span className="text-xs uppercase tracking-[0.12em] text-ink-soft">Почему мешало заявкам — </span>
+              гость не находит, сколько стоит и что входит, уходит сравнивать и не возвращается.
+            </p>
+            <p>
+              <span className="text-xs uppercase tracking-[0.12em] text-ink-soft">Что чинить первым — </span>
+              показать цену и ключевые условия прямо у кнопки «Забронировать».
+            </p>
           </div>
           <div className="mt-10">
             <Link href="#audit" className="inline-block bg-oxblood px-7 py-4 font-display text-base font-bold uppercase tracking-wide text-paper transition hover:bg-oxblood-deep">
@@ -168,7 +199,7 @@ export default function Home() {
           <h2 className="font-display font-black text-paper" style={{ fontSize: "clamp(2.25rem, 5vw, 4rem)" }}>
             Проверь свой сайт
           </h2>
-          <p className="mx-auto mt-4 max-w-md font-sans text-paper/80">Бесплатно, за пару минут. Узнайте, где уходят заявки.</p>
+          <p className="mx-auto mt-4 max-w-md font-sans text-paper/80">Бесплатно. Результат за пару минут. Без регистрации.</p>
           <Link href="#audit" className="mt-8 inline-block bg-paper px-8 py-4 font-display text-base font-bold uppercase tracking-wide text-oxblood transition hover:bg-paper-2">
             Проверить сайт
           </Link>
@@ -189,13 +220,8 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* sticky-CTA на мобайле */}
-      <Link
-        href="#audit"
-        className="fixed inset-x-0 bottom-0 z-40 block bg-oxblood py-4 text-center font-display text-sm font-bold uppercase tracking-wide text-paper shadow-[0_-4px_20px_rgba(78,0,0,0.15)] sm:hidden"
-      >
-        Проверить сайт
-      </Link>
+      {/* sticky-CTA на мобайле — только когда форма ушла из вида (не дублировать) */}
+      <StickyCta />
       <div className="h-16 sm:hidden" />
     </main>
   );
