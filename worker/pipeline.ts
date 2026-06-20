@@ -82,7 +82,7 @@ function competitorSummary(s: ScrapeResult): string {
     `CTA: ${e.buttons.slice(0, 8).join(" | ") || "нет"}`,
     `Формы (поля): ${e.forms.map((f) => f.fieldCount).join(", ") || "нет"}`,
     `Телефон: ${e.phone ?? "нет"}`,
-    `Schema: ${e.hasSchema ? e.schemaTypes.join(", ") : "нет"}`,
+    `Машиночитаемые данные о бизнесе: ${e.hasSchema ? "есть" : "нет"}`,
   ].join("; ");
 }
 
