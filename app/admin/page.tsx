@@ -15,6 +15,26 @@ const FUNNEL: { step: string; label: string }[] = [
   { step: "report_viewed", label: "Открыли разбор" },
 ];
 
+// Период фильтра. По умолчанию 7 дней — отрезает старый тестовый шум (раздел A2).
+const PERIODS: { key: string; label: string; days: number | null }[] = [
+  { key: "today", label: "Сегодня", days: 0 },
+  { key: "7d", label: "7 дней", days: 7 },
+  { key: "30d", label: "30 дней", days: 30 },
+  { key: "all", label: "Всё время", days: null },
+];
+
+// ISO-граница периода: null = без ограничения (всё время).
+function sinceIso(periodKey: string): string | null {
+  const p = PERIODS.find((x) => x.key === periodKey) ?? PERIODS[1]; // дефолт 7d
+  if (p.days === null) return null;
+  if (p.days === 0) {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0); // с начала сегодняшнего дня
+    return d.toISOString();
+  }
+  return new Date(Date.now() - p.days * 86400000).toISOString();
+}
+
 // Сырая строка события для подсчёта уников. meta.ip кладёт /api/events на каждое
 // событие, поэтому анонимные ранние шаги (landed/url_entered) дедуплятся по IP.
 interface EventRow {
@@ -41,28 +61,41 @@ interface LeadRow {
   created_at: string;
 }
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string }>;
+}) {
   const sb = getSupabase();
+
+  const sp = await searchParams;
+  const period = PERIODS.some((p) => p.key === sp.period) ? sp.period! : "7d";
+  const since = sinceIso(period);
+  const periodLabel = PERIODS.find((p) => p.key === period)!.label;
 
   // Тянем события воронки одним запросом и считаем УНИКАЛЬНЫЕ идентичности на шаг
   // (а не сырые события — иначе один человек, открывший разбор 5 раз, даёт 5).
   const funnelSteps = FUNNEL.map((f) => f.step);
-  const { data: evRaw } = await sb
+  let evQuery = sb
     .from("events")
     .select("id, step, audit_id, meta")
     .in("step", funnelSteps)
     .limit(20000);
+  if (since) evQuery = evQuery.gte("created_at", since);
+  const { data: evRaw } = await evQuery;
   const events = (evRaw ?? []) as EventRow[];
 
   const stepSets = new Map<string, Set<string>>(funnelSteps.map((s) => [s, new Set<string>()]));
   for (const e of events) stepSets.get(e.step)?.add(identity(e));
   const funnel = FUNNEL.map((f) => ({ ...f, count: stepSets.get(f.step)?.size ?? 0 }));
 
-  const { data: leadsRaw } = await sb
+  let leadsQuery = sb
     .from("leads")
     .select("id, audit_id, phone, telegram, email, channel, status, created_at")
     .order("created_at", { ascending: false })
     .limit(100);
+  if (since) leadsQuery = leadsQuery.gte("created_at", since);
+  const { data: leadsRaw } = await leadsQuery;
   const leads = (leadsRaw ?? []) as LeadRow[];
 
   const auditIds = leads.map((l) => l.audit_id).filter((x): x is string => !!x);
@@ -95,8 +128,27 @@ export default async function AdminPage() {
         <span className="font-sans text-sm text-espresso/50">admin · воронка</span>
       </header>
 
+      <nav className="mt-6 flex flex-wrap items-center gap-2" aria-label="Период">
+        {PERIODS.map((p) => {
+          const active = p.key === period;
+          return (
+            <a
+              key={p.key}
+              href={`/admin?period=${p.key}`}
+              className={`border px-3 py-1.5 font-sans text-sm transition-colors ${
+                active
+                  ? "border-oxblood bg-oxblood text-paper"
+                  : "border-espresso/20 text-espresso/70 hover:border-oxblood/50 hover:text-oxblood"
+              }`}
+            >
+              {p.label}
+            </a>
+          );
+        })}
+      </nav>
+
       <section className="mt-8">
-        <Tag>Воронка · уникальные посетители · всё время</Tag>
+        <Tag>Воронка · уникальные посетители · {periodLabel.toLowerCase()}</Tag>
         <div className="mt-4 space-y-1">
           {funnel.map((f, i) => {
             const prev = i > 0 ? funnel[i - 1].count : f.count;
@@ -119,7 +171,7 @@ export default async function AdminPage() {
       </section>
 
       <section className="mt-12">
-        <Tag>Лиды ({leads.length})</Tag>
+        <Tag>Лиды · {periodLabel.toLowerCase()} ({leads.length})</Tag>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full border-collapse font-sans text-sm">
             <thead>
