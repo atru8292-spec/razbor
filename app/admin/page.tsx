@@ -160,6 +160,36 @@ function relTime(iso: string): string {
   return `${mo} ${plural(mo, "месяц", "месяца", "месяцев")} назад`;
 }
 
+// Мелкая KPI-карточка (часть C). accent — оксблад-число для сигнальных метрик
+// (горячее: непрочитанные новые, низкий средний балл = много кандидатов на редизайн).
+function Kpi({
+  label,
+  value,
+  hint,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  hint?: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="flex flex-col justify-between border border-espresso/15 p-4">
+      <div className="font-sans text-xs uppercase tracking-[0.12em] text-espresso/55">{label}</div>
+      <div>
+        <div
+          className={`mt-3 font-display text-3xl font-extrabold leading-none tabular-nums ${
+            accent ? "text-oxblood" : "text-espresso"
+          }`}
+        >
+          {value}
+        </div>
+        {hint ? <div className="mt-1.5 font-sans text-xs text-espresso/45">{hint}</div> : null}
+      </div>
+    </div>
+  );
+}
+
 export default async function AdminPage({
   searchParams,
 }: {
@@ -266,6 +296,17 @@ export default async function AdminPage({
     }
   }
 
+  // ── KPI за период (часть C). Всё из уже загруженных данных, без новых запросов. ──
+  const leadsNew = leads.filter((l) => !l.status || l.status === "new").length;
+  const leadsEngaged = leads.filter((l) => ["engaged", "replied", "client"].includes(l.status ?? "")).length;
+  const landedCount = funnel[0].count;
+  const submittedCount = funnel.find((f) => f.step === "contact_submitted")?.count ?? 0;
+  const convPct = landedCount > 0 ? Math.round((submittedCount / landedCount) * 100) : null;
+  const scores = leads
+    .map((l) => (l.audit_id ? auditMap.get(l.audit_id)?.score : null))
+    .filter((x): x is number => typeof x === "number");
+  const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
       <header className="flex items-baseline justify-between border-b border-espresso/15 pb-4">
@@ -324,6 +365,37 @@ export default async function AdminPage({
       )}
 
       <section className="mt-8">
+        <Tag>Главное · {periodLabel.toLowerCase()}</Tag>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {/* Главная карточка — крупная, оксблад-акцент (bento: 2×2). */}
+          <div className="col-span-2 flex flex-col justify-between border border-oxblood/25 bg-oxblood/[0.04] p-5 sm:row-span-2">
+            <div className="font-sans text-xs uppercase tracking-[0.12em] text-espresso/55">Заявок за период</div>
+            <div>
+              <div className="mt-3 font-display text-[clamp(2.75rem,6vw,4.5rem)] font-extrabold leading-none tabular-nums text-oxblood">
+                {leads.length}
+              </div>
+              <div className="mt-2 font-sans text-sm text-espresso/55">
+                {leadsNew} новых · {leadsEngaged} откликнулись
+              </div>
+            </div>
+          </div>
+          <Kpi
+            label="Конверсия зашёл→заявка"
+            value={convPct === null ? "—" : `${convPct}%`}
+            hint={landedCount > 0 ? `${submittedCount} из ${landedCount}` : undefined}
+          />
+          <Kpi label="Откликнулись" value={leadsEngaged} accent={leadsEngaged > 0} />
+          <Kpi label="Новых, не обработано" value={leadsNew} accent={leadsNew > 0} />
+          <Kpi
+            label="Средний балл сайтов"
+            value={avgScore === null ? "—" : avgScore}
+            hint={avgScore !== null && avgScore < 50 ? "низкий — много кандидатов на редизайн" : undefined}
+            accent={avgScore !== null && avgScore < 50}
+          />
+        </div>
+      </section>
+
+      <section className="mt-12">
         <Tag>Воронка · уникальные посетители · {periodLabel.toLowerCase()}{ownerVisible ? " · с моими тестами" : ""}</Tag>
         <div className="mt-4 space-y-1.5">
           {funnel.map((f, i) => {
