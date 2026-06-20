@@ -19,24 +19,32 @@ interface DueLead {
   followup_stage: number;
 }
 
-// Текст для Telegram (человек уже в чате — без ссылок-кнопок, живо).
-function botText(touch: 1 | 2 | 3, p: { reportUrl: string; topPriority: string | null }): string {
+// Текст для Telegram (человек уже в чате, живо). Тон — docs/VOICE.md.
+export function botText(touch: 1 | 2 | 3, p: { reportUrl: string; finding: string | null }): string {
   if (touch === 1) {
-    const main = p.topPriority
-      ? `главное в вашем случае это: ${p.topPriority}. С него бы и начала.`
-      : `больше всего заявок обычно вытягивает первый экран и прямой путь к заявке.`;
-    return `Посмотрели разбор? Если коротко — ${main}\nОстальное — по приоритету в разборе: ${p.reportUrl}`;
+    const start = p.finding
+      ? `на вашем месте я бы начала вот с чего: ${p.finding}.`
+      : `на вашем месте начала бы с первого экрана и прямого пути к заявке. Там обычно утекает больше всего.`;
+    return (
+      `Заглянули в разбор?\n\n` +
+      `Если честно, ${start}\n` +
+      `Это то, что прямо сейчас тихо съедает заявки — человек заходит, не находит ответа и уходит.\n\n` +
+      `Остальное по порядку в разборе: ${p.reportUrl}`
+    );
   }
   if (touch === 2) {
+    const weak = p.finding ? `\n\nУ вас по разбору проседает ${p.finding} — и дело не в мелкой правке, а в том, как собрана страница.` : "";
     return (
-      `Как выглядит сайт, который не теряет заявки: понятный первый экран (что это, для кого, сколько стоит), ` +
-      `один очевидный шаг к заявке и доверие рядом с кнопкой. Когда это на месте — посетитель не уходит «подумать».\n` +
-      `Ваш разбор всегда здесь: ${p.reportUrl}`
+      `Чем сайт, который приносит заявки, отличается от просто красивого?\n\n` +
+      `Не дизайном. Устройством: на первом экране сразу ясно, что это и для кого; к заявке ведёт один очевидный шаг; рядом с кнопкой — доверие.\n\n` +
+      `Дело почти никогда не в одной кнопке.${weak}\nРазбор: ${p.reportUrl}`
     );
   }
   return (
-    `Хотите, лично пройдусь по вашему сайту и соберу план правок под вас? Это 20 минут и бесплатно — ` +
-    `разберём, что починить первым. Напишите сюда, договоримся 🙌`
+    `Давайте я гляну ваш сайт лично?\n\n` +
+    `Пройдусь по страницам, покажу, что чинить первым, и соберу короткий план под вас. 20 минут, бесплатно, без обязательств.\n\n` +
+    `Бывает, что правок набирается столько, что проще пересобрать страницу заново, чем чинить по частям. На созвоне посмотрим, что нужно именно вам.\n\n` +
+    `Если интересно — напишите сюда 🙌`
   );
 }
 
@@ -60,10 +68,9 @@ async function tgChatId(leadId: string): Promise<number | string | null> {
   return meta?.chat_id ?? null;
 }
 
-async function topPriorityFor(auditId: string): Promise<string | null> {
+async function topPrioritiesFor(auditId: string): Promise<string[]> {
   const { data } = await getSupabase().from("audits").select("result").eq("id", auditId).single();
-  const tp = (data?.result as { top_priorities?: string[] } | null)?.top_priorities;
-  return tp?.[0] ?? null;
+  return (data?.result as { top_priorities?: string[] } | null)?.top_priorities ?? [];
 }
 
 export async function followupTick(): Promise<void> {
@@ -89,7 +96,9 @@ export async function followupTick(): Promise<void> {
     for (const lead of (data ?? []) as DueLead[]) {
       if (!lead.audit_id) continue;
       const link = reportUrl(lead.audit_id);
-      const topPriority = await topPriorityFor(lead.audit_id);
+      // касание 1 → топ-1 находка, касание 2 → топ-2 (docs/VOICE.md)
+      const tp = await topPrioritiesFor(lead.audit_id);
+      const finding = touch === 1 ? (tp[0] ?? null) : touch === 2 ? (tp[1] ?? null) : null;
       const chatId = await tgChatId(lead.id);
 
       let realAttempt = false;
@@ -97,7 +106,7 @@ export async function followupTick(): Promise<void> {
 
       // почта
       if (lead.email) {
-        const { subject, html } = followupEmail(touch, { reportUrl: link, ownerContact: OWNER_CONTACT, topPriority });
+        const { subject, html } = followupEmail(touch, { reportUrl: link, ownerContact: OWNER_CONTACT, finding });
         const res = await sendEmail({ to: lead.email, subject, html, metadata: { lead_id: lead.id } });
         await logFollowup(lead.id, "email", res.ok ? "sent" : res.skipped ? "skipped" : "failed");
         if (!res.skipped) realAttempt = true;
@@ -105,7 +114,7 @@ export async function followupTick(): Promise<void> {
 
       // Telegram (если пришёл через бота — есть chat_id). Текст другой, не дубль письма.
       if (chatId != null) {
-        const res = await sendTelegramMessage(chatId, botText(touch, { reportUrl: link, topPriority }));
+        const res = await sendTelegramMessage(chatId, botText(touch, { reportUrl: link, finding }));
         await logFollowup(lead.id, "telegram", res.ok ? "sent" : res.skipped ? "skipped" : "failed");
         if (!res.skipped) realAttempt = true;
       }
