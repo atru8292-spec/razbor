@@ -3,11 +3,14 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 import { config } from "@/lib/config";
-import { PERIODS, funnelStats } from "@/lib/admin-stats";
+import { PERIODS, funnelStats, prevWindow } from "@/lib/admin-stats";
 import Tag from "@/components/ui/Tag";
 import StatusSelect from "@/components/admin/StatusSelect";
 import SubmitButton from "@/components/admin/SubmitButton";
 import AnalysisText from "@/components/admin/AnalysisText";
+import RefreshBar from "@/components/admin/RefreshBar";
+import NewSinceBadge from "@/components/admin/NewSinceBadge";
+import FlashNumber from "@/components/admin/FlashNumber";
 import { runMarketerAnalysis } from "./actions";
 import { channelRu, siteTypeRu, statusRu, deliveryRu, relTime } from "./labels";
 
@@ -36,27 +39,43 @@ async function toggleOwner(formData: FormData): Promise<void> {
 
 // Мелкая KPI-карточка (часть C). accent — оксблад-число для сигнальных метрик
 // (горячее: непрочитанные новые, низкий средний балл = много кандидатов на редизайн).
+function Delta({ n, unit }: { n: number | null; unit?: string }) {
+  if (n === null || n === 0) return null;
+  return (
+    <span className={`font-sans text-xs font-semibold ${n > 0 ? "text-oxblood" : "text-espresso/40"}`}>
+      {n > 0 ? "↑" : "↓"}
+      {Math.abs(n)}
+      {unit ?? ""}
+    </span>
+  );
+}
+
 function Kpi({
   label,
   value,
   hint,
   accent,
+  delta,
+  deltaUnit,
 }: {
   label: string;
   value: string | number;
   hint?: string;
   accent?: boolean;
+  delta?: number | null;
+  deltaUnit?: string;
 }) {
   return (
     <div className="flex flex-col justify-between border border-espresso/15 p-4">
       <div className="font-sans text-xs uppercase tracking-[0.12em] text-espresso/55">{label}</div>
       <div>
         <div
-          className={`mt-3 font-display text-3xl font-extrabold leading-none tabular-nums ${
+          className={`mt-3 flex items-baseline gap-2 font-display text-3xl font-extrabold leading-none tabular-nums ${
             accent ? "text-oxblood" : "text-espresso"
           }`}
         >
-          {value}
+          <FlashNumber value={value} />
+          <Delta n={delta ?? null} unit={deltaUnit} />
         </div>
         {hint ? <div className="mt-1.5 font-sans text-xs text-espresso/45">{hint}</div> : null}
       </div>
@@ -96,6 +115,18 @@ export default async function AdminPage({
   const { funnel, maxDropIdx, maxDrop, auditMap, leadsNew, leadsEngaged, avgScore, convPct, instrStart, hidingPreInstr } = stats;
   const landedCount = stats.landed;
   const submittedCount = stats.submitted;
+
+  // Динамика vs прошлый равный период (часть F). Для «всё время» сравнивать не с чем.
+  const prevW = prevWindow(period);
+  const prevStats = prevW ? await funnelStats({ period, ownerVisible, window: prevW }) : null;
+  const leadsDelta = prevStats ? stats.leads.length - prevStats.leads.length : null;
+  const engagedDelta = prevStats ? leadsEngaged - prevStats.leadsEngaged : null;
+  const convDelta = prevStats && convPct !== null && prevStats.convPct !== null ? convPct - prevStats.convPct : null;
+
+  // Реал-тайм (часть F): метка времени рендера + недавние заявки для бейджа «новых».
+  const serverTime = new Date().toISOString();
+  const { data: recentLeads } = await sb.from("leads").select("created_at").order("created_at", { ascending: false }).limit(50);
+  const recentLeadTimes = (recentLeads ?? []).map((l) => l.created_at as string);
 
   // Сортировка лидов (часть D) — на уровне страницы (зависит от ?sort).
   let leads = stats.leads;
@@ -156,9 +187,12 @@ export default async function AdminPage({
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
-      <header className="flex items-baseline justify-between border-b border-espresso/15 pb-4">
-        <span className="font-display text-lg font-bold uppercase tracking-[0.35em] text-oxblood">RAZBOR</span>
-        <span className="font-sans text-sm text-espresso/50">admin · воронка</span>
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-espresso/15 pb-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="font-display text-lg font-bold uppercase tracking-[0.35em] text-oxblood">RAZBOR</span>
+          <NewSinceBadge timestamps={recentLeadTimes} />
+        </div>
+        <RefreshBar serverTime={serverTime} />
       </header>
 
       <nav className="mt-6 flex flex-wrap items-center gap-2" aria-label="Период">
@@ -218,11 +252,13 @@ export default async function AdminPage({
           <div className="col-span-2 flex flex-col justify-between border border-oxblood/25 bg-oxblood/[0.04] p-5 sm:row-span-2">
             <div className="font-sans text-xs uppercase tracking-[0.12em] text-espresso/55">Заявок за период</div>
             <div>
-              <div className="mt-3 font-display text-[clamp(2.75rem,6vw,4.5rem)] font-extrabold leading-none tabular-nums text-oxblood">
-                {leads.length}
+              <div className="mt-3 flex items-baseline gap-3 font-display text-[clamp(2.75rem,6vw,4.5rem)] font-extrabold leading-none tabular-nums text-oxblood">
+                <FlashNumber value={leads.length} />
+                <Delta n={leadsDelta} />
               </div>
               <div className="mt-2 font-sans text-sm text-espresso/55">
                 {leadsNew} новых · {leadsEngaged} откликнулись
+                {prevStats && <span className="text-espresso/40"> · vs прошлый период</span>}
               </div>
             </div>
           </div>
@@ -230,8 +266,10 @@ export default async function AdminPage({
             label="Конверсия зашёл→заявка"
             value={convPct === null ? "—" : `${convPct}%`}
             hint={landedCount > 0 ? `${submittedCount} из ${landedCount}` : undefined}
+            delta={convDelta}
+            deltaUnit="пп"
           />
-          <Kpi label="Откликнулись" value={leadsEngaged} accent={leadsEngaged > 0} />
+          <Kpi label="Откликнулись" value={leadsEngaged} accent={leadsEngaged > 0} delta={engagedDelta} />
           <Kpi label="Новых, не обработано" value={leadsNew} accent={leadsNew > 0} />
           <Kpi
             label="Средний балл сайтов"

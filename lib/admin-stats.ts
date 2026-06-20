@@ -24,6 +24,21 @@ export function periodLabel(key: string): string {
   return (PERIODS.find((p) => p.key === key) ?? PERIODS[1]).label;
 }
 
+// Окно предыдущего равного периода — для динамики ↑↓ в KPI (часть F). null = сравнить
+// не с чем («всё время» или неизвестный ключ).
+export function prevWindow(period: string): { since: string; until: string } | null {
+  if (period === "today") {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    return { since: new Date(start.getTime() - 86400000).toISOString(), until: start.toISOString() };
+  }
+  const days = period === "7d" ? 7 : period === "30d" ? 30 : null;
+  if (!days) return null;
+  const ms = days * 86400000;
+  const now = Date.now();
+  return { since: new Date(now - 2 * ms).toISOString(), until: new Date(now - ms).toISOString() };
+}
+
 // ISO-граница периода: null = без ограничения (всё время).
 export function sinceIso(periodKey: string): string | null {
   const p = PERIODS.find((x) => x.key === periodKey) ?? PERIODS[1]; // дефолт 7d
@@ -78,9 +93,15 @@ export interface FunnelStats {
 
 // Главный сбор статистики за период. ownerVisible=false → прячем мои тесты и
 // дотестовый шум (всё до первого события с session_id), раздел A4/B3.
-export async function funnelStats(opts: { period: string; ownerVisible: boolean }): Promise<FunnelStats> {
+// window — явное окно [since, until) для сравнения с прошлым периодом (часть F).
+export async function funnelStats(opts: {
+  period: string;
+  ownerVisible: boolean;
+  window?: { since: string | null; until: string | null };
+}): Promise<FunnelStats> {
   const sb = getSupabase();
-  const since = sinceIso(opts.period);
+  const since = opts.window ? opts.window.since : sinceIso(opts.period);
+  const until = opts.window?.until ?? null;
 
   // Дотестовый шум — всё раньше первого события с session_id (раздел B3).
   let instrStart: string | null = null;
@@ -101,6 +122,7 @@ export async function funnelStats(opts: { period: string; ownerVisible: boolean 
   const funnelSteps = FUNNEL.map((f) => f.step);
   let evQuery = sb.from("events").select("id, step, audit_id, meta").in("step", funnelSteps).limit(20000);
   if (effSince) evQuery = evQuery.gte("created_at", effSince);
+  if (until) evQuery = evQuery.lt("created_at", until);
   const { data: evRaw } = await evQuery;
   const events = (evRaw ?? []) as EventRow[];
 
@@ -131,6 +153,7 @@ export async function funnelStats(opts: { period: string; ownerVisible: boolean 
     .order("created_at", { ascending: false })
     .limit(100);
   if (effSince) leadsQuery = leadsQuery.gte("created_at", effSince);
+  if (until) leadsQuery = leadsQuery.lt("created_at", until);
   const { data: leadsRaw } = await leadsQuery;
   let leads = (leadsRaw ?? []) as LeadRow[];
   if (!opts.ownerVisible) leads = leads.filter((l) => !(l.audit_id && ownerAuditIds.has(l.audit_id)));
