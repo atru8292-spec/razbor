@@ -71,7 +71,12 @@ export async function POST(req: NextRequest) {
   }
 
   const rid = req.cookies.get("rid")?.value;
-  await logEvent("contact_submitted", { auditId: audit.id, leadId: lead.id, meta: { ip, channel: contact.channel, ...(rid ? { session_id: rid } : {}) } });
+  const isOwner = req.cookies.get("is_owner")?.value === "1";
+  await logEvent("contact_submitted", {
+    auditId: audit.id,
+    leadId: lead.id,
+    meta: { ip, channel: contact.channel, ...(rid ? { session_id: rid } : {}), ...(isOwner ? { is_owner: true } : {}) },
+  });
 
   // Немедленная доставка подарка/отчёта (почта+СМС) — best-effort, не валит ответ.
   try {

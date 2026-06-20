@@ -1,8 +1,30 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 import Tag from "@/components/ui/Tag";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const OWNER_COOKIE_OPTS = {
+  httpOnly: true,
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+  maxAge: 60 * 60 * 24 * 365,
+};
+
+// Кнопка-страховка (раздел A4): переключает метку владельца на ЭТОМ браузере.
+// "1" = мой (исключаю из воронки), "off" = считать наравне со всеми. Middleware не
+// перетирает "off", поэтому выбор держится. Авто-метка ставится при входе в /admin.
+async function toggleOwner(formData: FormData): Promise<void> {
+  "use server";
+  const back = (formData.get("back") as string) || "/admin";
+  const c = await cookies();
+  const cur = c.get("is_owner")?.value;
+  c.set("is_owner", cur === "1" ? "off" : "1", OWNER_COOKIE_OPTS);
+  redirect(back);
+}
 
 // Закрытая воронка/аналитика (раздел 14). Доступ — Basic-auth в middleware.
 const FUNNEL: { step: string; label: string }[] = [
@@ -40,7 +62,7 @@ interface EventRow {
   id: string;
   step: string;
   audit_id: string | null;
-  meta: { ip?: string; session_id?: string } | null;
+  meta: { ip?: string; session_id?: string; is_owner?: boolean } | null;
 }
 
 // Уникальная идентичность события. session_id (сквозной rid-cookie, раздел A3) —
@@ -65,7 +87,7 @@ interface LeadRow {
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string }>;
+  searchParams: Promise<{ period?: string; owner?: string }>;
 }) {
   const sb = getSupabase();
 
@@ -73,6 +95,13 @@ export default async function AdminPage({
   const period = PERIODS.some((p) => p.key === sp.period) ? sp.period! : "7d";
   const since = sinceIso(period);
   const periodLabel = PERIODS.find((p) => p.key === period)!.label;
+
+  // owner=1 → показать всё, включая мои тесты. По умолчанию (нет параметра) —
+  // фильтр «без моих тестов» ВКЛ (раздел A4).
+  const ownerVisible = sp.owner === "1";
+  const ownerCookie = (await cookies()).get("is_owner")?.value;
+  const browserMarked = ownerCookie !== "off"; // помечен как мой (дефолт — да)
+  const qs = (p: string, owner: boolean) => `/admin?period=${p}${owner ? "&owner=1" : ""}`;
 
   // Тянем события воронки одним запросом и считаем УНИКАЛЬНЫЕ идентичности на шаг
   // (а не сырые события — иначе один человек, открывший разбор 5 раз, даёт 5).
@@ -86,8 +115,16 @@ export default async function AdminPage({
   const { data: evRaw } = await evQuery;
   const events = (evRaw ?? []) as EventRow[];
 
+  // Считаем уники на шаг. Заходы владельца (meta.is_owner) по умолчанию исключаем;
+  // попутно собираем его audit_id — чтобы спрятать и его тестовые лиды.
   const stepSets = new Map<string, Set<string>>(funnelSteps.map((s) => [s, new Set<string>()]));
-  for (const e of events) stepSets.get(e.step)?.add(identity(e));
+  const ownerAuditIds = new Set<string>();
+  for (const e of events) {
+    const owned = e.meta?.is_owner === true;
+    if (owned && e.audit_id) ownerAuditIds.add(e.audit_id);
+    if (owned && !ownerVisible) continue;
+    stepSets.get(e.step)?.add(identity(e));
+  }
   const funnel = FUNNEL.map((f) => ({ ...f, count: stepSets.get(f.step)?.size ?? 0 }));
 
   let leadsQuery = sb
@@ -97,7 +134,8 @@ export default async function AdminPage({
     .limit(100);
   if (since) leadsQuery = leadsQuery.gte("created_at", since);
   const { data: leadsRaw } = await leadsQuery;
-  const leads = (leadsRaw ?? []) as LeadRow[];
+  let leads = (leadsRaw ?? []) as LeadRow[];
+  if (!ownerVisible) leads = leads.filter((l) => !(l.audit_id && ownerAuditIds.has(l.audit_id)));
 
   const auditIds = leads.map((l) => l.audit_id).filter((x): x is string => !!x);
   const leadIds = leads.map((l) => l.id);
@@ -135,7 +173,7 @@ export default async function AdminPage({
           return (
             <a
               key={p.key}
-              href={`/admin?period=${p.key}`}
+              href={qs(p.key, ownerVisible)}
               className={`border px-3 py-1.5 font-sans text-sm transition-colors ${
                 active
                   ? "border-oxblood bg-oxblood text-paper"
@@ -148,8 +186,29 @@ export default async function AdminPage({
         })}
       </nav>
 
+      <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 font-sans text-sm">
+        {/* Фильтр «без моих тестов» — ВКЛ по умолчанию (owner спрятан). */}
+        <a href={qs(period, !ownerVisible)} className="inline-flex items-center gap-2 text-espresso/80 hover:text-oxblood">
+          <span
+            className={`inline-flex h-4 w-4 items-center justify-center border text-[10px] leading-none ${
+              !ownerVisible ? "border-oxblood bg-oxblood text-paper" : "border-espresso/40 text-transparent"
+            }`}
+          >
+            ✓
+          </span>
+          без моих тестов
+        </a>
+        {/* Кнопка-страховка: метка этого браузера. */}
+        <form action={toggleOwner}>
+          <input type="hidden" name="back" value={qs(period, ownerVisible)} />
+          <button type="submit" className="text-espresso/50 underline-offset-2 hover:text-oxblood hover:underline">
+            {browserMarked ? "этот браузер мой → считать наравне" : "этот браузер считается → пометить как мой"}
+          </button>
+        </form>
+      </div>
+
       <section className="mt-8">
-        <Tag>Воронка · уникальные посетители · {periodLabel.toLowerCase()}</Tag>
+        <Tag>Воронка · уникальные посетители · {periodLabel.toLowerCase()}{ownerVisible ? " · с моими тестами" : ""}</Tag>
         <div className="mt-4 space-y-1">
           {funnel.map((f, i) => {
             const prev = i > 0 ? funnel[i - 1].count : f.count;

@@ -6,17 +6,28 @@ import type { NextRequest } from "next/server";
 // который схлопывает разных людей с одного адреса — офис, моб. оператор, VPN).
 // Это НЕ метка владельца (is_owner — отдельный cookie, раздел A4).
 const RID_COOKIE = "rid";
+const OWNER_COOKIE = "is_owner";
 const YEAR = 60 * 60 * 24 * 365;
+
+const cookieOpts = {
+  httpOnly: true,
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+  maxAge: YEAR,
+};
 
 function ensureRid(req: NextRequest, res: NextResponse): void {
   if (req.cookies.get(RID_COOKIE)) return;
-  res.cookies.set(RID_COOKIE, crypto.randomUUID(), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: YEAR,
-  });
+  res.cookies.set(RID_COOKIE, crypto.randomUUID(), cookieOpts);
+}
+
+// Метка владельца (раздел A4). Прошёл Basic-auth в /admin = это владелец → его
+// заходы помечаются и по умолчанию исключаются из воронки. Отдельный cookie от rid.
+// Ставим только если cookie ещё нет: значение "off" (кнопка «считать») не перетираем.
+function markOwnerIfAbsent(req: NextRequest, res: NextResponse): void {
+  if (req.cookies.get(OWNER_COOKIE)) return;
+  res.cookies.set(OWNER_COOKIE, "1", cookieOpts);
 }
 
 // Basic-auth для /admin (раздел 14). Пара берётся из ADMIN_USER/ADMIN_PASSWORD.
@@ -42,6 +53,7 @@ export function middleware(req: NextRequest) {
       if (u === user && p === pass) {
         const res = NextResponse.next();
         ensureRid(req, res);
+        markOwnerIfAbsent(req, res); // владелец опознан по Basic-auth
         return res;
       }
     }

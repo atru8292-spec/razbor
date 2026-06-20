@@ -15,7 +15,13 @@ export async function POST(req: NextRequest) {
       // rid — сквозной id посетителя (ставит middleware). Уходит на сервер cookie
       // автоматически; кладём в meta.session_id как единый ключ дедупа воронки.
       const rid = req.cookies.get("rid")?.value;
-      const meta = { ...(parsed.data.meta ?? {}), ip, ...(rid ? { session_id: rid } : {}) };
+      const isOwner = req.cookies.get("is_owner")?.value === "1";
+      const meta = {
+        ...(parsed.data.meta ?? {}),
+        ip,
+        ...(rid ? { session_id: rid } : {}),
+        ...(isOwner ? { is_owner: true } : {}),
+      };
       await logEvent(parsed.data.step, { auditId: parsed.data.auditId ?? null, meta });
     }
   } catch {
