@@ -1,6 +1,7 @@
 import Link from "next/link";
 import UrlForm from "@/components/UrlForm";
 import StickyCta from "@/components/StickyCta";
+import SiteJsonLd from "@/components/SiteJsonLd";
 import Tag from "@/components/ui/Tag";
 import Reveal from "@/components/ui/Reveal";
 
@@ -56,6 +57,7 @@ function NeuroChatMockup() {
 export default function Home() {
   return (
     <main>
+      <SiteJsonLd />
       {/* хедер */}
       <header className={`${WRAP} flex items-center justify-between border-b border-line py-5`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
