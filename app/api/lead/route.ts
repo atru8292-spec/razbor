@@ -70,7 +70,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Не удалось сохранить контакт. Попробуйте ещё раз." }, { status: 500 });
   }
 
-  await logEvent("contact_submitted", { auditId: audit.id, leadId: lead.id, meta: { ip, channel: contact.channel } });
+  const rid = req.cookies.get("rid")?.value;
+  await logEvent("contact_submitted", { auditId: audit.id, leadId: lead.id, meta: { ip, channel: contact.channel, ...(rid ? { session_id: rid } : {}) } });
 
   // Немедленная доставка подарка/отчёта (почта+СМС) — best-effort, не валит ответ.
   try {

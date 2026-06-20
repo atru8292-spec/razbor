@@ -12,7 +12,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsed = eventSchema.safeParse(body);
     if (parsed.success) {
-      const meta = { ...(parsed.data.meta ?? {}), ip };
+      // rid — сквозной id посетителя (ставит middleware). Уходит на сервер cookie
+      // автоматически; кладём в meta.session_id как единый ключ дедупа воронки.
+      const rid = req.cookies.get("rid")?.value;
+      const meta = { ...(parsed.data.meta ?? {}), ip, ...(rid ? { session_id: rid } : {}) };
       await logEvent(parsed.data.step, { auditId: parsed.data.auditId ?? null, meta });
     }
   } catch {

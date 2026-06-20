@@ -35,19 +35,20 @@ function sinceIso(periodKey: string): string | null {
   return new Date(Date.now() - p.days * 86400000).toISOString();
 }
 
-// Сырая строка события для подсчёта уников. meta.ip кладёт /api/events на каждое
-// событие, поэтому анонимные ранние шаги (landed/url_entered) дедуплятся по IP.
+// Сырая строка события для подсчёта уников.
 interface EventRow {
   id: string;
   step: string;
   audit_id: string | null;
-  meta: { ip?: string } | null;
+  meta: { ip?: string; session_id?: string } | null;
 }
 
-// Уникальная идентичность события: один прогон аудита (audit_id) для средних/поздних
-// шагов, IP для анонимных ранних, id как последний fallback (старые события без ip).
+// Уникальная идентичность события. session_id (сквозной rid-cookie, раздел A3) —
+// единый ключ через ВСЕ шаги воронки: один посетитель считается один раз от входа
+// до разбора, базисы сходятся, воронка монотонна. Fallback для старых событий без
+// session_id: audit_id → IP → id (приблизительно, уходит из окна за счёт фильтра дат).
 function identity(e: EventRow): string {
-  return e.audit_id ?? e.meta?.ip ?? e.id;
+  return e.meta?.session_id ?? e.audit_id ?? e.meta?.ip ?? e.id;
 }
 
 interface LeadRow {

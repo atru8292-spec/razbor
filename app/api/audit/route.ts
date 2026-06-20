@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Не удалось создать проверку. Попробуйте ещё раз." }, { status: 500 });
   }
 
-  await logEvent("audit_started", { auditId: data.id, meta: { ip, url, goal } });
+  const rid = req.cookies.get("rid")?.value;
+  await logEvent("audit_started", { auditId: data.id, meta: { ip, url, goal, ...(rid ? { session_id: rid } : {}) } });
   return NextResponse.json({ auditId: data.id });
 }
