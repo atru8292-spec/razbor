@@ -13,7 +13,8 @@ export type EventStep =
   | "report_viewed"
   | "pdf_downloaded"
   | "followup_clicked"
-  | "tg_started"; // пользователь открыл бота по диплинку (храним chat_id в meta)
+  | "tg_started" // пользователь открыл бота по диплинку (храним chat_id в meta)
+  | "bot_message"; // сообщение в боте (meta.dir in|out, meta.text) — переписка в карточке лида
 
 export async function logEvent(
   step: EventStep,
@@ -28,5 +29,27 @@ export async function logEvent(
     });
   } catch (e) {
     console.error(`[events] не удалось записать ${step}:`, e);
+  }
+}
+
+// Сообщение бота (часть H): входящее (dir='in', от человека) или исходящее
+// (dir='out', касание бота). Лента строится в карточке лида по lead_id + времени.
+// Мягко: сбой логирования не валит работу бота.
+export async function logBotMessage(
+  leadId: string | null,
+  dir: "in" | "out",
+  text: string,
+  chatId?: number | string | null,
+): Promise<void> {
+  try {
+    await getSupabase()
+      .from("events")
+      .insert({
+        step: "bot_message",
+        lead_id: leadId,
+        meta: { dir, text, ...(chatId != null ? { chat_id: chatId } : {}) },
+      });
+  } catch (e) {
+    console.error("[events] не удалось записать bot_message:", e);
   }
 }

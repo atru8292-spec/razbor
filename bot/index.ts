@@ -6,7 +6,7 @@ import { Telegraf } from "telegraf";
 import { env } from "../lib/env";
 import { getSupabase } from "../lib/supabase";
 import { giftUrl, reportUrl, logDelivery } from "../lib/delivery";
-import { logEvent } from "../lib/events";
+import { logEvent, logBotMessage } from "../lib/events";
 
 // Касание 0 в боте (REDESIGN §9): живо, с тизером следующего касания.
 // token = lead.id; chatId сохраняем в events(tg_started) для telegram-догонов.
@@ -34,7 +34,7 @@ export async function handleStart(token: string | undefined, chatId?: number): P
     await logDelivery(lead.id, "telegram", "gift", "sent");
   }
 
-  return [
+  const reply = [
     "Готово, разбор у вас на руках 👇",
     "",
     `📊 Разбор: ${reportUrl(lead.audit_id)}`,
@@ -43,10 +43,12 @@ export async function handleStart(token: string | undefined, chatId?: number): P
     "Гляньте разбор — там видно, где утекают заявки и что чинить первым.",
     "Завтра вернусь и скажу, с чего бы начала на вашем месте.",
   ].join("\n");
+  await logBotMessage(lead.id, "out", reply, chatId); // касание 0 в ленту переписки
+  return reply;
 }
 
-/** Лид написал боту → останавливаем цепочку (engaged, §9). Возвращает true, если нашли лид. */
-async function markEngagedByChat(chatId: number): Promise<boolean> {
+/** Находит лид по chat_id (через tg_started). null, если человек не приходил по диплинку. */
+async function leadIdByChat(chatId: number): Promise<string | null> {
   const { data } = await getSupabase()
     .from("events")
     .select("lead_id")
@@ -54,10 +56,7 @@ async function markEngagedByChat(chatId: number): Promise<boolean> {
     .filter("meta->>chat_id", "eq", String(chatId))
     .order("created_at", { ascending: false })
     .limit(1);
-  const leadId = data?.[0]?.lead_id;
-  if (!leadId) return false;
-  await getSupabase().from("leads").update({ status: "engaged" }).eq("id", leadId);
-  return true;
+  return data?.[0]?.lead_id ?? null;
 }
 
 async function main() {
@@ -81,14 +80,23 @@ async function main() {
   });
 
   // Любое сообщение (не /start) = человек ответил → стоп цепочки + передаём Арине.
+  // Пишем входящее и исходящее в переписку (часть H) — видна в карточке лида.
   bot.on("message", async (ctx) => {
     try {
-      const found = await markEngagedByChat(ctx.chat.id);
-      await ctx.reply(
-        found
-          ? "Спасибо, что написали! Передаю Арине — она ответит и подскажет по вашему сайту."
-          : "Чтобы получить разбор — перейдите по ссылке «Забрать в Telegram» со страницы результата.",
-      );
+      const chatId = ctx.chat.id;
+      const leadId = await leadIdByChat(chatId);
+      const incoming = "text" in ctx.message ? ctx.message.text : "[нетекстовое сообщение]";
+      await logBotMessage(leadId, "in", incoming, chatId);
+
+      if (leadId) {
+        await getSupabase().from("leads").update({ status: "engaged" }).eq("id", leadId);
+      }
+
+      const reply = leadId
+        ? "Спасибо, что написали! Передаю Арине — она ответит и подскажет по вашему сайту."
+        : "Чтобы получить разбор — перейдите по ссылке «Забрать в Telegram» со страницы результата.";
+      await logBotMessage(leadId, "out", reply, chatId);
+      await ctx.reply(reply);
     } catch (e) {
       console.error("[bot] ошибка message:", e);
     }

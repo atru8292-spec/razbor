@@ -2,6 +2,7 @@
 // своя работа, стоп при ответе (engaged). Крон в воркере раз в час.
 // followup_stage: 0 — касание 0 (подарок); 1 — день2; 2 — день4; 3 — день7 (финал).
 import { getSupabase } from "./supabase";
+import { logBotMessage } from "./events";
 import { env } from "./env";
 import { config } from "./config";
 import { sendEmail } from "./unisender";
@@ -114,8 +115,10 @@ export async function followupTick(): Promise<void> {
 
       // Telegram (если пришёл через бота — есть chat_id). Текст другой, не дубль письма.
       if (chatId != null) {
-        const res = await sendTelegramMessage(chatId, botText(touch, { reportUrl: link, finding }));
+        const tgText = botText(touch, { reportUrl: link, finding });
+        const res = await sendTelegramMessage(chatId, tgText);
         await logFollowup(lead.id, "telegram", res.ok ? "sent" : res.skipped ? "skipped" : "failed");
+        if (res.ok) await logBotMessage(lead.id, "out", tgText, chatId); // в ленту переписки (часть H)
         if (!res.skipped) realAttempt = true;
       }
 
