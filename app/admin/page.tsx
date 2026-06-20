@@ -1,7 +1,10 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 import Tag from "@/components/ui/Tag";
+import StatusSelect from "@/components/admin/StatusSelect";
+import { channelRu, siteTypeRu, statusRu, deliveryRu, relTime } from "./labels";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -84,82 +87,6 @@ interface LeadRow {
   created_at: string;
 }
 
-// ── Человеческий язык (часть B). Наружу ни одного английского ключа. ──
-const SITE_TYPE_RU: Record<string, string> = {
-  ecommerce: "Интернет-магазин",
-  leadgen: "Сбор заявок",
-  saas: "Сервис/SaaS",
-  info: "Инфопродукт",
-  local: "Местный бизнес",
-};
-function siteTypeRu(t: string | null): string {
-  return t ? SITE_TYPE_RU[t] ?? t : "—";
-}
-
-const CHANNEL_RU: Record<string, string> = {
-  phone: "Телефон",
-  telegram: "Telegram",
-  email: "Почта",
-  sms: "СМС",
-};
-function channelRu(c: string | null): string {
-  return c ? CHANNEL_RU[c] ?? c : "—";
-}
-
-// Статус лида → подпись + класс бейджа-пилюли (откликнулся/клиент — оксблад-акцент).
-const STATUS_RU: Record<string, { label: string; cls: string }> = {
-  new: { label: "Новый", cls: "border-espresso/25 text-espresso/65" },
-  engaged: { label: "Откликнулся", cls: "border-oxblood/40 bg-oxblood/10 text-oxblood" },
-  replied: { label: "Ответил", cls: "border-oxblood/40 bg-oxblood/10 text-oxblood" },
-  client: { label: "Клиент", cls: "border-oxblood bg-oxblood text-paper" },
-};
-function statusRu(s: string | null): { label: string; cls: string } {
-  return STATUS_RU[s ?? "new"] ?? { label: s ?? "Новый", cls: "border-espresso/25 text-espresso/65" };
-}
-
-// Доставка подарка/писем — словами, что реально произошло (вместо telegram:gift и пр.).
-const DELIVERY_TYPE_RU: Record<string, string> = { gift: "Подарок", report: "Отчёт", followup: "Письмо-догон" };
-const DELIVERY_CHAN_RU: Record<string, string> = { telegram: "в Telegram", sms: "по СМС", email: "на почту" };
-const DELIVERY_STATUS_RU: Record<string, string> = {
-  sent: "отправлен",
-  delivered: "доставлен",
-  opened: "открыт",
-  clicked: "перешёл по ссылке",
-  bounced: "не дошёл",
-  skipped: "не отправлен",
-};
-function deliveryRu(channel: string, type: string, status: string): string {
-  const t = DELIVERY_TYPE_RU[type] ?? type;
-  const c = DELIVERY_CHAN_RU[channel] ?? channel;
-  const st = DELIVERY_STATUS_RU[status] ?? status;
-  return `${t} ${c} (${st})`;
-}
-
-// Относительное время («2 часа назад», «вчера»); точная дата — в title по hover.
-function plural(n: number, one: string, few: string, many: string): string {
-  const m10 = n % 10;
-  const m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return one;
-  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
-  return many;
-}
-function relTime(iso: string): string {
-  const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (min < 1) return "только что";
-  if (min < 60) return `${min} ${plural(min, "минуту", "минуты", "минут")} назад`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `${h} ${plural(h, "час", "часа", "часов")} назад`;
-  const d = Math.floor(h / 24);
-  if (d === 1) return "вчера";
-  if (d < 7) return `${d} ${plural(d, "день", "дня", "дней")} назад`;
-  if (d < 30) {
-    const w = Math.floor(d / 7);
-    return `${w} ${plural(w, "неделю", "недели", "недель")} назад`;
-  }
-  const mo = Math.floor(d / 30);
-  return `${mo} ${plural(mo, "месяц", "месяца", "месяцев")} назад`;
-}
-
 // Мелкая KPI-карточка (часть C). accent — оксблад-число для сигнальных метрик
 // (горячее: непрочитанные новые, низкий средний балл = много кандидатов на редизайн).
 function Kpi({
@@ -193,7 +120,7 @@ function Kpi({
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; owner?: string }>;
+  searchParams: Promise<{ period?: string; owner?: string; sort?: string }>;
 }) {
   const sb = getSupabase();
 
@@ -207,7 +134,17 @@ export default async function AdminPage({
   const ownerVisible = sp.owner === "1";
   const ownerCookie = (await cookies()).get("is_owner")?.value;
   const browserMarked = ownerCookie !== "off"; // помечен как мой (дефолт — да)
-  const qs = (p: string, owner: boolean) => `/admin?period=${p}${owner ? "&owner=1" : ""}`;
+  const sort = sp.sort === "score" ? "score" : "date"; // сортировка лидов (часть D)
+
+  // URL с текущими фильтрами + переопределениями (чтобы period/owner/sort не терялись).
+  const url = (ov: { period?: string; owner?: boolean; sort?: string } = {}) => {
+    const params = new URLSearchParams();
+    params.set("period", ov.period ?? period);
+    if (ov.owner ?? ownerVisible) params.set("owner", "1");
+    const so = ov.sort ?? sort;
+    if (so !== "date") params.set("sort", so);
+    return `/admin?${params.toString()}`;
+  };
 
   // «Без моих тестов» прячет не только помеченные заходы, но и весь ДОТЕСТОВЫЙ шум —
   // всё, что раньше первого события с session_id. До запуска сквозной аналитики на
@@ -285,6 +222,18 @@ export default async function AdminPage({
     }
   }
 
+  // Сортировка (часть D). Дефолт — новые сверху (выборка уже date desc). По баллу —
+  // низкий сверху: горячие (балл <50) первыми, без балла — в конец.
+  if (sort === "score") {
+    leads = [...leads].sort((a, b) => {
+      const sa = a.audit_id ? auditMap.get(a.audit_id)?.score ?? null : null;
+      const sb = b.audit_id ? auditMap.get(b.audit_id)?.score ?? null : null;
+      if (sa === null) return sb === null ? 0 : 1;
+      if (sb === null) return -1;
+      return sa - sb;
+    });
+  }
+
   const sentMap = new Map<string, string[]>();
   if (leadIds.length) {
     const { data: logs } = await sb.from("emails_log").select("lead_id, channel, type, status").in("lead_id", leadIds);
@@ -320,7 +269,7 @@ export default async function AdminPage({
           return (
             <a
               key={p.key}
-              href={qs(p.key, ownerVisible)}
+              href={url({ period: p.key })}
               className={`border px-3 py-1.5 font-sans text-sm transition-colors ${
                 active
                   ? "border-oxblood bg-oxblood text-paper"
@@ -335,7 +284,7 @@ export default async function AdminPage({
 
       <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 font-sans text-sm">
         {/* Фильтр «без моих тестов» — ВКЛ по умолчанию (owner спрятан). */}
-        <a href={qs(period, !ownerVisible)} className="inline-flex items-center gap-2 text-espresso/80 hover:text-oxblood">
+        <a href={url({ owner: !ownerVisible })} className="inline-flex items-center gap-2 text-espresso/80 hover:text-oxblood">
           <span
             className={`inline-flex h-4 w-4 items-center justify-center border text-[10px] leading-none ${
               !ownerVisible ? "border-oxblood bg-oxblood text-paper" : "border-espresso/40 text-transparent"
@@ -347,7 +296,7 @@ export default async function AdminPage({
         </a>
         {/* Кнопка-страховка: метка этого браузера. */}
         <form action={toggleOwner}>
-          <input type="hidden" name="back" value={qs(period, ownerVisible)} />
+          <input type="hidden" name="back" value={url()} />
           <button type="submit" className="text-espresso/50 underline-offset-2 hover:text-oxblood hover:underline">
             {browserMarked ? "этот браузер мой → считать наравне" : "этот браузер считается → пометить как мой"}
           </button>
@@ -447,9 +396,18 @@ export default async function AdminPage({
                 <th className="py-2 pr-4">Канал</th>
                 <th className="py-2 pr-4">Статус</th>
                 <th className="py-2 pr-4">Тип</th>
-                <th className="py-2 pr-4">Балл</th>
+                <th className="py-2 pr-4">
+                  <a href={url({ sort: "score" })} className={`hover:text-oxblood ${sort === "score" ? "text-oxblood" : ""}`}>
+                    Балл{sort === "score" ? " ↑" : ""}
+                  </a>
+                </th>
                 <th className="py-2 pr-4">Отправлено</th>
-                <th className="py-2 pr-4">Дата</th>
+                <th className="py-2 pr-4">
+                  <a href={url({ sort: "date" })} className={`hover:text-oxblood ${sort === "date" ? "text-oxblood" : ""}`}>
+                    Когда{sort === "date" ? " ↓" : ""}
+                  </a>
+                </th>
+                <th className="py-2" aria-label="Действия" />
               </tr>
             </thead>
             <tbody>
@@ -458,9 +416,15 @@ export default async function AdminPage({
                 const contact = l.phone || (l.telegram ? `@${l.telegram}` : "") || l.email || "—";
                 const st = statusRu(l.status);
                 const sent = sentMap.get(l.id) ?? [];
+                const score = a?.score ?? null;
+                const hot = score !== null && score < 50;
                 return (
-                  <tr key={l.id} className="border-b border-espresso/8">
-                    <td className="py-2.5 pr-4 text-espresso">{contact}</td>
+                  <tr key={l.id} className="group border-b border-espresso/8 transition-colors hover:bg-oxblood/[0.03]">
+                    <td className="py-2.5 pr-4">
+                      <Link href={`/admin/lead/${l.id}`} className="font-medium text-espresso hover:text-oxblood hover:underline">
+                        {contact}
+                      </Link>
+                    </td>
                     <td className="py-2.5 pr-4 text-espresso/70">{channelRu(l.channel)}</td>
                     <td className="py-2.5 pr-4">
                       <span className={`inline-block whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs ${st.cls}`}>
@@ -468,7 +432,18 @@ export default async function AdminPage({
                       </span>
                     </td>
                     <td className="py-2.5 pr-4 text-espresso/70">{siteTypeRu(a?.site_type ?? null)}</td>
-                    <td className="py-2.5 pr-4 text-espresso/70 tabular-nums">{a?.score ?? "—"}</td>
+                    <td className="py-2.5 pr-4 tabular-nums">
+                      {score === null ? (
+                        <span className="text-espresso/40">—</span>
+                      ) : hot ? (
+                        <span className="inline-flex items-center gap-1.5 font-semibold text-oxblood" title="Горячий: балл ниже 50">
+                          <span className="h-1.5 w-1.5 rounded-full bg-oxblood" />
+                          {score}
+                        </span>
+                      ) : (
+                        <span className="text-espresso/70">{score}</span>
+                      )}
+                    </td>
                     <td className="py-2.5 pr-4 text-espresso/55">{sent.length ? sent.join(", ") : "—"}</td>
                     <td
                       className="whitespace-nowrap py-2.5 pr-4 text-espresso/50"
@@ -476,12 +451,23 @@ export default async function AdminPage({
                     >
                       {relTime(l.created_at)}
                     </td>
+                    <td className="py-2.5 text-right">
+                      <div className="flex items-center justify-end gap-3 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                        <StatusSelect leadId={l.id} status={l.status} />
+                        <Link
+                          href={`/admin/lead/${l.id}`}
+                          className="whitespace-nowrap font-sans text-xs text-oxblood hover:underline"
+                        >
+                          Открыть →
+                        </Link>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
               {leads.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-espresso/45">
+                  <td colSpan={8} className="py-8 text-center text-espresso/45">
                     Лидов пока нет за этот период
                   </td>
                 </tr>
