@@ -123,6 +123,30 @@ export async function medianMinutesToLead(opts: { period: string; ownerVisible: 
   return Math.round(durations[Math.floor(durations.length / 2)]);
 }
 
+// Статистика бота (части H.3/H.4). wrote/messages — за период; awaiting — общий
+// «хвост»: лиды в статусе engaged (написали в бота, но ещё не отмечены ответом).
+// «Ждут ответа» завязан на ручной статус: бот ставит engaged автоматически, хозяйка
+// двигает в «Ответил» из карточки — кто остался engaged, тот ждёт.
+export async function botStats(opts: { period: string }): Promise<{ wrote: number; messages: number; awaiting: number }> {
+  const sb = getSupabase();
+  const since = sinceIso(opts.period);
+  let mq = sb.from("events").select("lead_id, meta, created_at").eq("step", "bot_message").limit(20000);
+  if (since) mq = mq.gte("created_at", since);
+  const { data: msgs } = await mq;
+
+  const writers = new Set<string>();
+  let incoming = 0;
+  for (const m of (msgs ?? []) as { lead_id: string | null; meta: { dir?: string } | null }[]) {
+    if (m.meta?.dir === "in") {
+      incoming++;
+      if (m.lead_id) writers.add(m.lead_id);
+    }
+  }
+
+  const { count: awaiting } = await sb.from("leads").select("id", { count: "exact", head: true }).eq("status", "engaged");
+  return { wrote: writers.size, messages: incoming, awaiting: awaiting ?? 0 };
+}
+
 // Главный сбор статистики за период. ownerVisible=false → прячем мои тесты и
 // дотестовый шум (всё до первого события с session_id), раздел A4/B3.
 // window — явное окно [since, until) для сравнения с прошлым периодом (часть F).

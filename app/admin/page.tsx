@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 import { config } from "@/lib/config";
-import { PERIODS, funnelStats, prevWindow, medianMinutesToLead } from "@/lib/admin-stats";
+import { PERIODS, funnelStats, prevWindow, medianMinutesToLead, botStats } from "@/lib/admin-stats";
 import Tag from "@/components/ui/Tag";
 import StatusSelect from "@/components/admin/StatusSelect";
 import SubmitButton from "@/components/admin/SubmitButton";
@@ -137,6 +137,9 @@ export default async function AdminPage({
   const sources = [...bySource.entries()].sort((a, b) => b[1] - a[1]);
   const medMins = await medianMinutesToLead({ period, ownerVisible });
 
+  // Статистика бота (части H.3/H.4).
+  const bot = await botStats({ period });
+
   // Сортировка лидов (часть D) — на уровне страницы (зависит от ?sort).
   let leads = stats.leads;
   if (sort === "score") {
@@ -200,6 +203,12 @@ export default async function AdminPage({
         <div className="flex flex-wrap items-center gap-3">
           <span className="font-display text-lg font-bold uppercase tracking-[0.35em] text-oxblood">RAZBOR</span>
           <NewSinceBadge timestamps={recentLeadTimes} />
+          {bot.awaiting > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-oxblood bg-oxblood/10 px-3 py-1 font-sans text-xs font-medium text-oxblood">
+              <span className="h-1.5 w-1.5 rounded-full bg-oxblood" />
+              {bot.awaiting} {bot.awaiting === 1 ? "ждёт" : "ждут"} ответа в боте
+            </span>
+          )}
         </div>
         <RefreshBar serverTime={serverTime} />
       </header>
@@ -455,6 +464,18 @@ export default async function AdminPage({
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="mt-12">
+        <Tag>Бот · {periodLabel.toLowerCase()}</Tag>
+        <div className="mt-4 grid grid-cols-3 gap-3">
+          <Kpi label="Написали в бота" value={bot.wrote} />
+          <Kpi label="Сообщений от людей" value={bot.messages} />
+          <Kpi label="Ждут ответа" value={bot.awaiting} accent={bot.awaiting > 0} />
+        </div>
+        <p className="mt-3 font-sans text-xs text-espresso/45">
+          «Ждут ответа» — лиды в статусе «Откликнулся»: написали в бота, но вы ещё не отметили их «Ответил» в карточке.
+        </p>
       </section>
 
       <section className="mt-12">
