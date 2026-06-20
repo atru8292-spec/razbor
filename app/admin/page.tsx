@@ -66,18 +66,18 @@ function Kpi({
   deltaUnit?: string;
 }) {
   return (
-    <div className="flex flex-col justify-between border border-espresso/15 p-4">
-      <div className="font-sans text-xs uppercase tracking-[0.12em] text-espresso/55">{label}</div>
+    <div className="flex flex-col justify-between border border-espresso/15 p-3">
+      <div className="font-sans text-[0.7rem] uppercase tracking-[0.1em] text-espresso/55">{label}</div>
       <div>
         <div
-          className={`mt-3 flex items-baseline gap-2 font-display text-3xl font-extrabold leading-none tabular-nums ${
+          className={`mt-2 flex items-baseline gap-1.5 font-display text-2xl font-extrabold leading-none tabular-nums ${
             accent ? "text-oxblood" : "text-espresso"
           }`}
         >
           <FlashNumber value={value} />
           <Delta n={delta ?? null} unit={deltaUnit} />
         </div>
-        {hint ? <div className="mt-1.5 font-sans text-xs text-espresso/45">{hint}</div> : null}
+        {hint ? <div className="mt-1 font-sans text-[0.7rem] leading-tight text-espresso/45">{hint}</div> : null}
       </div>
     </div>
   );
@@ -198,8 +198,8 @@ export default async function AdminPage({
   );
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-espresso/15 pb-4">
+    <main className="mx-auto max-w-5xl px-6 py-8">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-espresso/15 pb-3">
         <div className="flex flex-wrap items-center gap-3">
           <span className="font-display text-lg font-bold uppercase tracking-[0.35em] text-oxblood">RAZBOR</span>
           <NewSinceBadge timestamps={recentLeadTimes} />
@@ -213,14 +213,14 @@ export default async function AdminPage({
         <RefreshBar serverTime={serverTime} />
       </header>
 
-      <nav className="mt-6 flex flex-wrap items-center gap-2" aria-label="Период">
+      <nav className="mt-5 flex flex-wrap items-center gap-1.5" aria-label="Период">
         {PERIODS.map((p) => {
           const active = p.key === period;
           return (
             <a
               key={p.key}
               href={url({ period: p.key })}
-              className={`border px-3 py-1.5 font-sans text-sm transition-colors ${
+              className={`border px-3 py-1 font-sans text-sm transition-colors ${
                 active
                   ? "border-oxblood bg-oxblood text-paper"
                   : "border-espresso/20 text-espresso/70 hover:border-oxblood/50 hover:text-oxblood"
@@ -232,7 +232,7 @@ export default async function AdminPage({
         })}
       </nav>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 font-sans text-sm">
+      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1.5 font-sans text-sm">
         {/* Фильтр «без моих тестов» — ВКЛ по умолчанию (owner спрятан). */}
         <a href={url({ owner: !ownerVisible })} className="inline-flex items-center gap-2 text-espresso/80 hover:text-oxblood">
           <span
@@ -263,20 +263,20 @@ export default async function AdminPage({
         <p className="mt-1.5 font-sans text-xs text-espresso/45">Фильтр скрывает мои помеченные заходы (данных с меткой пока нет).</p>
       )}
 
-      <section className="mt-8">
+      <section className="mt-7">
         <Tag>Главное · {periodLabel.toLowerCase()}</Tag>
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {/* Главная карточка — крупная, оксблад-акцент (bento: 2×2). */}
-          <div className="col-span-2 flex flex-col justify-between border border-oxblood/25 bg-oxblood/[0.04] p-5 sm:row-span-2">
-            <div className="font-sans text-xs uppercase tracking-[0.12em] text-espresso/55">Заявок за период</div>
-            <div>
-              <div className="mt-3 flex items-baseline gap-3 font-display text-[clamp(2.75rem,6vw,4.5rem)] font-extrabold leading-none tabular-nums text-oxblood">
+        <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          {/* Главная карточка — чуть крупнее остальных, оксблад-акцент (bento: 2×2). */}
+          <div className="col-span-2 flex flex-col justify-between border border-oxblood/25 bg-oxblood/[0.04] p-4 sm:row-span-2">
+            <div className="font-sans text-[0.7rem] uppercase tracking-[0.1em] text-espresso/55">Заявок за период</div>
+            <div className="mt-2">
+              <div className="flex items-baseline gap-2.5 font-display text-[clamp(2rem,4.5vw,3.25rem)] font-extrabold leading-none tabular-nums text-oxblood">
                 <FlashNumber value={leads.length} />
                 <Delta n={leadsDelta} />
               </div>
-              <div className="mt-2 font-sans text-sm text-espresso/55">
+              <div className="mt-1.5 font-sans text-xs text-espresso/55">
                 {leadsNew} новых · {leadsEngaged} откликнулись
-                {prevStats && <span className="text-espresso/40"> · vs прошлый период</span>}
+                {prevStats && <span className="text-espresso/40"> · vs прошлый</span>}
               </div>
             </div>
           </div>
@@ -298,7 +298,7 @@ export default async function AdminPage({
         </div>
       </section>
 
-      <section className="mt-12">
+      <section className="mt-8">
         <Tag>Воронка · уникальные посетители · {periodLabel.toLowerCase()}{ownerVisible ? " · с моими тестами" : ""}</Tag>
         <div className="mt-4 space-y-1.5">
           {funnel.map((f, i) => {
@@ -340,149 +340,12 @@ export default async function AdminPage({
         )}
       </section>
 
-      <section className="mt-12">
-        <Tag>Лиды · {periodLabel.toLowerCase()} ({leads.length})</Tag>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full border-collapse font-sans text-sm">
-            <thead>
-              <tr className="border-b border-espresso/20 text-left text-xs uppercase tracking-wide text-espresso/50">
-                <th className="py-2 pr-4">Контакт</th>
-                <th className="py-2 pr-4">Канал</th>
-                <th className="py-2 pr-4">Статус</th>
-                <th className="py-2 pr-4">Тип</th>
-                <th className="py-2 pr-4">
-                  <a href={url({ sort: "score" })} className={`hover:text-oxblood ${sort === "score" ? "text-oxblood" : ""}`}>
-                    Балл{sort === "score" ? " ↑" : ""}
-                  </a>
-                </th>
-                <th className="py-2 pr-4">Отправлено</th>
-                <th className="py-2 pr-4">
-                  <a href={url({ sort: "date" })} className={`hover:text-oxblood ${sort === "date" ? "text-oxblood" : ""}`}>
-                    Когда{sort === "date" ? " ↓" : ""}
-                  </a>
-                </th>
-                <th className="py-2" aria-label="Действия" />
-              </tr>
-            </thead>
-            <tbody>
-              {leads.map((l) => {
-                const a = l.audit_id ? auditMap.get(l.audit_id) : undefined;
-                const contact = l.phone || (l.telegram ? `@${l.telegram}` : "") || l.email || "—";
-                const st = statusRu(l.status);
-                const sent = sentMap.get(l.id) ?? [];
-                const score = a?.score ?? null;
-                const hot = score !== null && score < 50;
-                return (
-                  <tr key={l.id} className="group border-b border-espresso/8 transition-colors hover:bg-oxblood/[0.03]">
-                    <td className="py-2.5 pr-4">
-                      <Link href={`/admin/lead/${l.id}`} className="font-medium text-espresso hover:text-oxblood hover:underline">
-                        {contact}
-                      </Link>
-                    </td>
-                    <td className="py-2.5 pr-4 text-espresso/70">{channelRu(l.channel)}</td>
-                    <td className="py-2.5 pr-4">
-                      <span className={`inline-block whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs ${st.cls}`}>
-                        {st.label}
-                      </span>
-                    </td>
-                    <td className="py-2.5 pr-4 text-espresso/70">{siteTypeRu(a?.site_type ?? null)}</td>
-                    <td className="py-2.5 pr-4 tabular-nums">
-                      {score === null ? (
-                        <span className="text-espresso/40">—</span>
-                      ) : hot ? (
-                        <span className="inline-flex items-center gap-1.5 font-semibold text-oxblood" title="Горячий: балл ниже 50">
-                          <span className="h-1.5 w-1.5 rounded-full bg-oxblood" />
-                          {score}
-                        </span>
-                      ) : (
-                        <span className="text-espresso/70">{score}</span>
-                      )}
-                    </td>
-                    <td className="py-2.5 pr-4 text-espresso/55">{sent.length ? sent.join(", ") : "—"}</td>
-                    <td
-                      className="whitespace-nowrap py-2.5 pr-4 text-espresso/50"
-                      title={new Date(l.created_at).toLocaleString("ru-RU")}
-                    >
-                      {relTime(l.created_at)}
-                    </td>
-                    <td className="py-2.5 text-right">
-                      <div className="flex items-center justify-end gap-3 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-                        <StatusSelect leadId={l.id} status={l.status} />
-                        <Link
-                          href={`/admin/lead/${l.id}`}
-                          className="whitespace-nowrap font-sans text-xs text-oxblood hover:underline"
-                        >
-                          Открыть →
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {leads.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="py-8 text-center text-espresso/45">
-                    Лидов пока нет за этот период
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="mt-12">
-        <Tag>Откуда заявки · {periodLabel.toLowerCase()}</Tag>
-        <div className="mt-4 grid gap-6 sm:grid-cols-2">
-          <div>
-            {sources.length ? (
-              <div className="space-y-2">
-                {sources.map(([s, n]) => {
-                  const pct = stats.leads.length ? Math.round((n / stats.leads.length) * 100) : 0;
-                  return (
-                    <div key={s} className="flex items-center gap-3">
-                      <div className="w-28 shrink-0 font-sans text-sm text-espresso/80">{sourceRu(s)}</div>
-                      <div className="relative h-5 flex-1 bg-espresso/8">
-                        <div className="h-full bg-oxblood/70" style={{ width: `${pct}%` }} />
-                      </div>
-                      <div className="w-12 shrink-0 text-right font-sans text-sm tabular-nums text-espresso">{n}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="font-sans text-sm text-espresso/45">Пока нет заявок за этот период.</p>
-            )}
-          </div>
-          <div className="flex flex-col justify-center border border-espresso/15 p-4">
-            <div className="font-sans text-xs uppercase tracking-[0.12em] text-espresso/55">Темп: от захода до заявки</div>
-            <div className="mt-2 font-display text-2xl font-extrabold tabular-nums text-espresso">
-              {medMins === null ? "—" : medMins < 60 ? `~${medMins} мин` : `~${Math.round(medMins / 60)} ч`}
-            </div>
-            <div className="mt-1 font-sans text-xs text-espresso/45">
-              {medMins === null ? "данных пока мало" : "обычно столько проходит до заявки"}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="mt-12">
-        <Tag>Бот · {periodLabel.toLowerCase()}</Tag>
-        <div className="mt-4 grid grid-cols-3 gap-3">
-          <Kpi label="Написали в бота" value={bot.wrote} />
-          <Kpi label="Сообщений от людей" value={bot.messages} />
-          <Kpi label="Ждут ответа" value={bot.awaiting} accent={bot.awaiting > 0} />
-        </div>
-        <p className="mt-3 font-sans text-xs text-espresso/45">
-          «Ждут ответа» — лиды в статусе «Откликнулся»: написали в бота, но вы ещё не отметили их «Ответил» в карточке.
-        </p>
-      </section>
-
-      <section className="mt-12">
+      {/* AI-разбор — сразу под воронкой (ценный, держим высоко). */}
+      <section className="mt-8">
         <Tag>AI-разбор статистики</Tag>
         {analysis?.text ? (
-          <div className="mt-4">
-            <div className="border border-espresso/15 bg-paper-2/40 p-5">
+          <div className="mt-3">
+            <div className="border border-espresso/15 bg-paper-2/40 p-4">
               <AnalysisText text={analysis.text} />
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-sans text-xs text-espresso/45">
@@ -498,17 +361,170 @@ export default async function AdminPage({
                 Данных пока мало — разбор не изменится, гонять заново смысла нет. {reanalyze("всё равно разобрать заново", true)}
               </p>
             ) : (
-              <div className="mt-4">{reanalyze("Разобрать заново", false)}</div>
+              <div className="mt-3">{reanalyze("Разобрать заново", false)}</div>
             )}
           </div>
         ) : (
-          <div className="mt-4">
+          <div className="mt-3 flex flex-wrap items-center gap-3">
             <p className="font-sans text-sm text-espresso/55">
               {dataThin
-                ? "Данных пока мало — разбор будет короткий, но первый прогон можно сделать."
-                : "AI-маркетолог разберёт воронку: где теряешь людей, что это значит и что чинить первым."}
+                ? "Данных мало — разбор будет короткий, но прогнать можно."
+                : "AI-маркетолог разберёт воронку: где теряешь людей и что чинить."}
             </p>
-            <div className="mt-3">{reanalyze("Разобрать статистику", false)}</div>
+            {reanalyze("Разобрать статистику", false)}
+          </div>
+        )}
+      </section>
+
+      {/* Вторичное — каналы, темп, бот — компактно в ряд (части G/H), не во всю ширину. */}
+      <section className="mt-8">
+        <Tag>Каналы и активность · {periodLabel.toLowerCase()}</Tag>
+        <div className="mt-3 grid gap-2.5 sm:grid-cols-3">
+          {/* Откуда заявки */}
+          <div className="border border-espresso/15 p-3">
+            <div className="font-sans text-[0.7rem] uppercase tracking-[0.1em] text-espresso/55">Откуда заявки</div>
+            {sources.length ? (
+              <div className="mt-2.5 space-y-1.5">
+                {sources.map(([s, n]) => {
+                  const pct = stats.leads.length ? Math.round((n / stats.leads.length) * 100) : 0;
+                  return (
+                    <div key={s} className="flex items-center gap-2">
+                      <div className="w-20 shrink-0 truncate font-sans text-xs text-espresso/80">{sourceRu(s)}</div>
+                      <div className="relative h-3.5 flex-1 bg-espresso/8">
+                        <div className="h-full bg-oxblood/70" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="w-5 shrink-0 text-right font-sans text-xs tabular-nums text-espresso">{n}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-2 font-sans text-xs text-espresso/45">Нет заявок за период.</p>
+            )}
+          </div>
+
+          {/* Темп */}
+          <div className="border border-espresso/15 p-3">
+            <div className="font-sans text-[0.7rem] uppercase tracking-[0.1em] text-espresso/55">Темп до заявки</div>
+            <div className="mt-2 font-display text-2xl font-extrabold tabular-nums text-espresso">
+              {medMins === null ? "—" : medMins < 60 ? `~${medMins} мин` : `~${Math.round(medMins / 60)} ч`}
+            </div>
+            <div className="mt-1 font-sans text-[0.7rem] text-espresso/45">
+              {medMins === null ? "данных мало" : "от захода до заявки"}
+            </div>
+          </div>
+
+          {/* Бот */}
+          <div className="border border-espresso/15 p-3">
+            <div className="font-sans text-[0.7rem] uppercase tracking-[0.1em] text-espresso/55">Бот</div>
+            <div className="mt-2.5 space-y-1.5 font-sans text-sm">
+              <div className="flex items-baseline justify-between">
+                <span className="text-espresso/70">Написали</span>
+                <span className="font-display font-bold tabular-nums text-espresso">{bot.wrote}</span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-espresso/70">Сообщений</span>
+                <span className="font-display font-bold tabular-nums text-espresso">{bot.messages}</span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className={bot.awaiting > 0 ? "text-oxblood" : "text-espresso/70"}>Ждут ответа</span>
+                <span className={`font-display font-bold tabular-nums ${bot.awaiting > 0 ? "text-oxblood" : "text-espresso"}`}>
+                  {bot.awaiting}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p className="mt-2 font-sans text-[0.7rem] text-espresso/40">
+          «Ждут ответа» — лиды в статусе «Откликнулся»: написали в бота, но вы ещё не отметили их «Ответил».
+        </p>
+      </section>
+
+      {/* Таблица лидов — детали внизу. */}
+      <section className="mt-8">
+        <Tag>Лиды · {periodLabel.toLowerCase()} ({leads.length})</Tag>
+        {leads.length === 0 ? (
+          <p className="mt-3 font-sans text-sm text-espresso/45">Лидов пока нет за этот период.</p>
+        ) : (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full border-collapse font-sans text-sm">
+              <thead>
+                <tr className="border-b border-espresso/20 text-left text-xs uppercase tracking-wide text-espresso/50">
+                  <th className="py-2 pr-4">Контакт</th>
+                  <th className="py-2 pr-4">Канал</th>
+                  <th className="py-2 pr-4">Статус</th>
+                  <th className="py-2 pr-4">Тип</th>
+                  <th className="py-2 pr-4">
+                    <a href={url({ sort: "score" })} className={`hover:text-oxblood ${sort === "score" ? "text-oxblood" : ""}`}>
+                      Балл{sort === "score" ? " ↑" : ""}
+                    </a>
+                  </th>
+                  <th className="py-2 pr-4">Отправлено</th>
+                  <th className="py-2 pr-4">
+                    <a href={url({ sort: "date" })} className={`hover:text-oxblood ${sort === "date" ? "text-oxblood" : ""}`}>
+                      Когда{sort === "date" ? " ↓" : ""}
+                    </a>
+                  </th>
+                  <th className="py-2" aria-label="Действия" />
+                </tr>
+              </thead>
+              <tbody>
+                {leads.map((l) => {
+                  const a = l.audit_id ? auditMap.get(l.audit_id) : undefined;
+                  const contact = l.phone || (l.telegram ? `@${l.telegram}` : "") || l.email || "—";
+                  const st = statusRu(l.status);
+                  const sent = sentMap.get(l.id) ?? [];
+                  const score = a?.score ?? null;
+                  const hot = score !== null && score < 50;
+                  return (
+                    <tr key={l.id} className="group border-b border-espresso/8 transition-colors hover:bg-oxblood/[0.03]">
+                      <td className="py-2 pr-4">
+                        <Link href={`/admin/lead/${l.id}`} className="font-medium text-espresso hover:text-oxblood hover:underline">
+                          {contact}
+                        </Link>
+                      </td>
+                      <td className="py-2 pr-4 text-espresso/70">{channelRu(l.channel)}</td>
+                      <td className="py-2 pr-4">
+                        <span className={`inline-block whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs ${st.cls}`}>
+                          {st.label}
+                        </span>
+                      </td>
+                      <td className="py-2 pr-4 text-espresso/70">{siteTypeRu(a?.site_type ?? null)}</td>
+                      <td className="py-2 pr-4 tabular-nums">
+                        {score === null ? (
+                          <span className="text-espresso/40">—</span>
+                        ) : hot ? (
+                          <span className="inline-flex items-center gap-1.5 font-semibold text-oxblood" title="Горячий: балл ниже 50">
+                            <span className="h-1.5 w-1.5 rounded-full bg-oxblood" />
+                            {score}
+                          </span>
+                        ) : (
+                          <span className="text-espresso/70">{score}</span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4 text-espresso/55">{sent.length ? sent.join(", ") : "—"}</td>
+                      <td
+                        className="whitespace-nowrap py-2 pr-4 text-espresso/50"
+                        title={new Date(l.created_at).toLocaleString("ru-RU")}
+                      >
+                        {relTime(l.created_at)}
+                      </td>
+                      <td className="py-2 text-right">
+                        <div className="flex items-center justify-end gap-3 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                          <StatusSelect leadId={l.id} status={l.status} />
+                          <Link
+                            href={`/admin/lead/${l.id}`}
+                            className="whitespace-nowrap font-sans text-xs text-oxblood hover:underline"
+                          >
+                            Открыть →
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </section>
