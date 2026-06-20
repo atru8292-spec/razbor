@@ -34,6 +34,19 @@ export function statusRu(s: string | null): { label: string; cls: string } {
   return STATUS_RU[s ?? "new"] ?? { label: s ?? "Новый", cls: "border-espresso/25 text-espresso/65" };
 }
 
+// Источник трафика (часть G) — utm_source по-человечески.
+export const SOURCE_RU: Record<string, string> = {
+  telegram: "Telegram",
+  instagram: "Instagram",
+  vk: "ВКонтакте",
+  email: "Почта (рассылка)",
+  direct: "Напрямую",
+  web: "Напрямую",
+};
+export function sourceRu(s: string | null): string {
+  return s ? SOURCE_RU[s] ?? s : "Напрямую";
+}
+
 // Порядок для ручной смены статуса (часть D). Значения = leads.status (не ломаем
 // авто-engaged по боту/вебхуку — та же колонка).
 export const STATUS_OPTIONS: { value: string; label: string }[] = [

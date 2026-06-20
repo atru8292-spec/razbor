@@ -4,7 +4,28 @@ import { getSupabase } from "@/lib/supabase";
 import type { AuditResult } from "@/lib/audit-types";
 import Tag from "@/components/ui/Tag";
 import StatusSelect from "@/components/admin/StatusSelect";
-import { channelRu, siteTypeRu, statusRu, relTime } from "../../labels";
+import { channelRu, siteTypeRu, statusRu, sourceRu, relTime } from "../../labels";
+
+// Шаги пути лида по-человечески (часть G). bot_message не показываем — он в переписке.
+const JOURNEY_LABEL: Record<string, string> = {
+  landed: "зашёл на лендинг",
+  url_entered: "ввёл ссылку сайта",
+  audit_started: "запустил проверку",
+  teaser_shown: "увидел короткий разбор",
+  contact_opened: "открыл форму контакта",
+  contact_submitted: "оставил контакт",
+  report_viewed: "открыл полный разбор",
+  pdf_downloaded: "скачал PDF-отчёт",
+  followup_clicked: "кликнул в письме",
+  tg_started: "открыл бота в Telegram",
+};
+
+interface JourneyRow {
+  id: string;
+  step: string;
+  created_at: string;
+  meta: { session_id?: string } | null;
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,7 +51,7 @@ export default async function LeadCardPage({ params }: { params: Promise<{ id: s
 
   const { data: lead } = await sb
     .from("leads")
-    .select("id, audit_id, phone, telegram, email, channel, status, created_at")
+    .select("id, audit_id, phone, telegram, email, channel, status, source, created_at")
     .eq("id", id)
     .maybeSingle();
   if (!lead) notFound();
@@ -53,8 +74,32 @@ export default async function LeadCardPage({ params }: { params: Promise<{ id: s
     .limit(500);
   const chat = (chatRaw ?? []) as ChatRow[];
 
+  // Путь лида (часть G): события по audit_id/lead_id + ранние шаги по session_id
+  // (landed/url_entered привязаны к session_id, аудита тогда ещё нет).
+  let base = sb.from("events").select("id, step, created_at, meta");
+  base = lead.audit_id ? base.or(`audit_id.eq.${lead.audit_id},lead_id.eq.${id}`) : base.eq("lead_id", id);
+  const { data: ev1 } = await base.order("created_at", { ascending: true }).limit(300);
+  const rows1 = (ev1 ?? []) as JourneyRow[];
+  const sid = rows1.find((e) => e.meta?.session_id)?.meta?.session_id ?? null;
+  let rows2: JourneyRow[] = [];
+  if (sid) {
+    const { data: ev2 } = await sb
+      .from("events")
+      .select("id, step, created_at, meta")
+      .filter("meta->>session_id", "eq", sid)
+      .order("created_at", { ascending: true })
+      .limit(300);
+    rows2 = (ev2 ?? []) as JourneyRow[];
+  }
+  const seen = new Set<string>();
+  const journey = [...rows1, ...rows2]
+    .filter((e) => JOURNEY_LABEL[e.step] && !seen.has(e.id) && seen.add(e.id))
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
   const contact = lead.phone || (lead.telegram ? `@${lead.telegram}` : "") || lead.email || "—";
   const st = statusRu(lead.status);
+  const journeyTime = (iso: string) =>
+    new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
@@ -75,6 +120,7 @@ export default async function LeadCardPage({ params }: { params: Promise<{ id: s
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-sans text-sm text-espresso/55">
           <span>{channelRu(lead.channel)}</span>
+          <span>откуда: {sourceRu(lead.source)}</span>
           <span title={new Date(lead.created_at).toLocaleString("ru-RU")}>пришёл {relTime(lead.created_at)}</span>
         </div>
         <div className="mt-3 flex items-center gap-3">
@@ -135,6 +181,25 @@ export default async function LeadCardPage({ params }: { params: Promise<{ id: s
         ) : (
           <p className="mt-4 font-sans text-sm text-espresso/45">
             {lead.audit_id ? "Разбор ещё не готов или не сохранился." : "К лиду не привязан аудит."}
+          </p>
+        )}
+      </section>
+
+      {/* Путь лида — журнал событий (часть G) */}
+      <section className="mt-10">
+        <Tag>Путь</Tag>
+        {journey.length > 0 ? (
+          <ol className="mt-4 space-y-2.5">
+            {journey.map((e) => (
+              <li key={e.id} className="flex gap-3 font-sans text-sm">
+                <span className="w-28 shrink-0 tabular-nums text-espresso/45">{journeyTime(e.created_at)}</span>
+                <span className="text-espresso/85">{JOURNEY_LABEL[e.step]}</span>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="mt-4 font-sans text-sm text-espresso/45">
+            Путь не восстановить — события до запуска сквозной аналитики не привязаны к этому лиду.
           </p>
         )}
       </section>

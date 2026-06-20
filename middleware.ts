@@ -7,6 +7,7 @@ import type { NextRequest } from "next/server";
 // Это НЕ метка владельца (is_owner — отдельный cookie, раздел A4).
 const RID_COOKIE = "rid";
 const OWNER_COOKIE = "is_owner";
+const UTM_COOKIE = "utm";
 const YEAR = 60 * 60 * 24 * 365;
 
 const cookieOpts = {
@@ -20,6 +21,16 @@ const cookieOpts = {
 function ensureRid(req: NextRequest, res: NextResponse): void {
   if (req.cookies.get(RID_COOKIE)) return;
   res.cookies.set(RID_COOKIE, crypto.randomUUID(), cookieOpts);
+}
+
+// Источник трафика (часть G): ловим ?utm_source из ссылки и кладём в cookie на 30
+// дней. Потом /api/events|audit|lead проставляют его в события/лиды — видно, какой
+// канал реально приводит заявки. Чистим значение (буквы/цифры/-/_), чтобы не мусорить.
+function captureUtm(req: NextRequest, res: NextResponse): void {
+  const raw = req.nextUrl.searchParams.get("utm_source");
+  if (!raw) return;
+  const src = raw.toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40);
+  if (src) res.cookies.set(UTM_COOKIE, src, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
 }
 
 // Метка владельца (раздел A4). Прошёл Basic-auth в /admin = это владелец → его
@@ -64,9 +75,10 @@ export function middleware(req: NextRequest) {
     });
   }
 
-  // Публичные страницы (лендинг, выдача) — просто гарантируем сквозной rid.
+  // Публичные страницы (лендинг, выдача) — сквозной rid + источник трафика (utm).
   const res = NextResponse.next();
   ensureRid(req, res);
+  captureUtm(req, res);
   return res;
 }
 

@@ -71,6 +71,7 @@ export interface LeadRow {
   email: string | null;
   channel: string | null;
   status: string | null;
+  source: string | null;
   created_at: string;
 }
 
@@ -89,6 +90,37 @@ export interface FunnelStats {
   instrStart: string | null;
   hidingPreInstr: boolean;
   effSince: string | null;
+}
+
+// Медиана времени от первого захода до оставленной заявки (часть G) — «обычно
+// оставляют за N минут». По session_id, медиана устойчивее к выбросам, чем среднее.
+export async function medianMinutesToLead(opts: { period: string; ownerVisible: boolean }): Promise<number | null> {
+  const sb = getSupabase();
+  const since = sinceIso(opts.period);
+  let q = sb.from("events").select("step, created_at, meta").in("step", ["landed", "contact_submitted"]).limit(20000);
+  if (since) q = q.gte("created_at", since);
+  const { data } = await q;
+
+  const firstLanded = new Map<string, number>();
+  const firstSubmit = new Map<string, number>();
+  for (const e of (data ?? []) as { step: string; created_at: string; meta: { session_id?: string; is_owner?: boolean } | null }[]) {
+    const sid = e.meta?.session_id;
+    if (!sid) continue;
+    if (!opts.ownerVisible && e.meta?.is_owner) continue;
+    const t = new Date(e.created_at).getTime();
+    const map = e.step === "landed" ? firstLanded : firstSubmit;
+    const cur = map.get(sid);
+    if (cur === undefined || t < cur) map.set(sid, t);
+  }
+
+  const durations: number[] = [];
+  for (const [sid, submit] of firstSubmit) {
+    const landed = firstLanded.get(sid);
+    if (landed !== undefined && submit >= landed) durations.push((submit - landed) / 60000);
+  }
+  if (!durations.length) return null;
+  durations.sort((a, b) => a - b);
+  return Math.round(durations[Math.floor(durations.length / 2)]);
 }
 
 // Главный сбор статистики за период. ownerVisible=false → прячем мои тесты и
@@ -149,7 +181,7 @@ export async function funnelStats(opts: {
   // Лиды за период (+ owner-фильтр).
   let leadsQuery = sb
     .from("leads")
-    .select("id, audit_id, phone, telegram, email, channel, status, created_at")
+    .select("id, audit_id, phone, telegram, email, channel, status, source, created_at")
     .order("created_at", { ascending: false })
     .limit(100);
   if (effSince) leadsQuery = leadsQuery.gte("created_at", effSince);

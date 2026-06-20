@@ -52,9 +52,17 @@ export async function POST(req: NextRequest) {
 
   const rid = req.cookies.get("rid")?.value;
   const isOwner = req.cookies.get("is_owner")?.value === "1";
+  const utm = req.cookies.get("utm")?.value;
   await logEvent("audit_started", {
     auditId: data.id,
-    meta: { ip, url, goal, ...(rid ? { session_id: rid } : {}), ...(isOwner ? { is_owner: true } : {}) },
+    meta: {
+      ip,
+      url,
+      goal,
+      ...(rid ? { session_id: rid } : {}),
+      ...(isOwner ? { is_owner: true } : {}),
+      ...(utm ? { utm_source: utm } : {}),
+    },
   });
   return NextResponse.json({ auditId: data.id });
 }

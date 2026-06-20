@@ -16,11 +16,13 @@ export async function POST(req: NextRequest) {
       // автоматически; кладём в meta.session_id как единый ключ дедупа воронки.
       const rid = req.cookies.get("rid")?.value;
       const isOwner = req.cookies.get("is_owner")?.value === "1";
+      const utm = req.cookies.get("utm")?.value;
       const meta = {
         ...(parsed.data.meta ?? {}),
         ip,
         ...(rid ? { session_id: rid } : {}),
         ...(isOwner ? { is_owner: true } : {}),
+        ...(utm ? { utm_source: utm } : {}),
       };
       await logEvent(parsed.data.step, { auditId: parsed.data.auditId ?? null, meta });
     }

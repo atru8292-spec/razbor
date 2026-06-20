@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       consent: true,
       consent_at: new Date().toISOString(),
       ip,
-      source: "web",
+      source: req.cookies.get("utm")?.value || "direct", // источник трафика (часть G)
     })
     .select("id")
     .single();

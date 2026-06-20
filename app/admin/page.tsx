@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
 import { config } from "@/lib/config";
-import { PERIODS, funnelStats, prevWindow } from "@/lib/admin-stats";
+import { PERIODS, funnelStats, prevWindow, medianMinutesToLead } from "@/lib/admin-stats";
 import Tag from "@/components/ui/Tag";
 import StatusSelect from "@/components/admin/StatusSelect";
 import SubmitButton from "@/components/admin/SubmitButton";
@@ -12,7 +12,7 @@ import RefreshBar from "@/components/admin/RefreshBar";
 import NewSinceBadge from "@/components/admin/NewSinceBadge";
 import FlashNumber from "@/components/admin/FlashNumber";
 import { runMarketerAnalysis } from "./actions";
-import { channelRu, siteTypeRu, statusRu, deliveryRu, relTime } from "./labels";
+import { channelRu, siteTypeRu, statusRu, deliveryRu, sourceRu, relTime } from "./labels";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -127,6 +127,15 @@ export default async function AdminPage({
   const serverTime = new Date().toISOString();
   const { data: recentLeads } = await sb.from("leads").select("created_at").order("created_at", { ascending: false }).limit(50);
   const recentLeadTimes = (recentLeads ?? []).map((l) => l.created_at as string);
+
+  // Источник трафика + темп (часть G).
+  const bySource = new Map<string, number>();
+  for (const l of stats.leads) {
+    const s = l.source || "direct";
+    bySource.set(s, (bySource.get(s) ?? 0) + 1);
+  }
+  const sources = [...bySource.entries()].sort((a, b) => b[1] - a[1]);
+  const medMins = await medianMinutesToLead({ period, ownerVisible });
 
   // Сортировка лидов (часть D) — на уровне страницы (зависит от ?sort).
   let leads = stats.leads;
@@ -410,6 +419,41 @@ export default async function AdminPage({
               )}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <section className="mt-12">
+        <Tag>Откуда заявки · {periodLabel.toLowerCase()}</Tag>
+        <div className="mt-4 grid gap-6 sm:grid-cols-2">
+          <div>
+            {sources.length ? (
+              <div className="space-y-2">
+                {sources.map(([s, n]) => {
+                  const pct = stats.leads.length ? Math.round((n / stats.leads.length) * 100) : 0;
+                  return (
+                    <div key={s} className="flex items-center gap-3">
+                      <div className="w-28 shrink-0 font-sans text-sm text-espresso/80">{sourceRu(s)}</div>
+                      <div className="relative h-5 flex-1 bg-espresso/8">
+                        <div className="h-full bg-oxblood/70" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="w-12 shrink-0 text-right font-sans text-sm tabular-nums text-espresso">{n}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="font-sans text-sm text-espresso/45">Пока нет заявок за этот период.</p>
+            )}
+          </div>
+          <div className="flex flex-col justify-center border border-espresso/15 p-4">
+            <div className="font-sans text-xs uppercase tracking-[0.12em] text-espresso/55">Темп: от захода до заявки</div>
+            <div className="mt-2 font-display text-2xl font-extrabold tabular-nums text-espresso">
+              {medMins === null ? "—" : medMins < 60 ? `~${medMins} мин` : `~${Math.round(medMins / 60)} ч`}
+            </div>
+            <div className="mt-1 font-sans text-xs text-espresso/45">
+              {medMins === null ? "данных пока мало" : "обычно столько проходит до заявки"}
+            </div>
+          </div>
         </div>
       </section>
 
