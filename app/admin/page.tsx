@@ -2,8 +2,13 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
+import { config } from "@/lib/config";
+import { PERIODS, funnelStats } from "@/lib/admin-stats";
 import Tag from "@/components/ui/Tag";
 import StatusSelect from "@/components/admin/StatusSelect";
+import SubmitButton from "@/components/admin/SubmitButton";
+import AnalysisText from "@/components/admin/AnalysisText";
+import { runMarketerAnalysis } from "./actions";
 import { channelRu, siteTypeRu, statusRu, deliveryRu, relTime } from "./labels";
 
 export const runtime = "nodejs";
@@ -27,64 +32,6 @@ async function toggleOwner(formData: FormData): Promise<void> {
   const cur = c.get("is_owner")?.value;
   c.set("is_owner", cur === "1" ? "off" : "1", OWNER_COOKIE_OPTS);
   redirect(back);
-}
-
-// Закрытая воронка/аналитика (раздел 14). Доступ — Basic-auth в middleware.
-const FUNNEL: { step: string; label: string }[] = [
-  { step: "landed", label: "Зашли на лендинг" },
-  { step: "url_entered", label: "Ввели URL" },
-  { step: "audit_started", label: "Запустили аудит" },
-  { step: "teaser_shown", label: "Увидели тизер" },
-  { step: "contact_opened", label: "Открыли форму" },
-  { step: "contact_submitted", label: "Оставили контакт" },
-  { step: "report_viewed", label: "Открыли разбор" },
-];
-
-// Период фильтра. По умолчанию 7 дней — отрезает старый тестовый шум (раздел A2).
-const PERIODS: { key: string; label: string; days: number | null }[] = [
-  { key: "today", label: "Сегодня", days: 0 },
-  { key: "7d", label: "7 дней", days: 7 },
-  { key: "30d", label: "30 дней", days: 30 },
-  { key: "all", label: "Всё время", days: null },
-];
-
-// ISO-граница периода: null = без ограничения (всё время).
-function sinceIso(periodKey: string): string | null {
-  const p = PERIODS.find((x) => x.key === periodKey) ?? PERIODS[1]; // дефолт 7d
-  if (p.days === null) return null;
-  if (p.days === 0) {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0); // с начала сегодняшнего дня
-    return d.toISOString();
-  }
-  return new Date(Date.now() - p.days * 86400000).toISOString();
-}
-
-// Сырая строка события для подсчёта уников.
-interface EventRow {
-  id: string;
-  step: string;
-  audit_id: string | null;
-  meta: { ip?: string; session_id?: string; is_owner?: boolean } | null;
-}
-
-// Уникальная идентичность события. session_id (сквозной rid-cookie, раздел A3) —
-// единый ключ через ВСЕ шаги воронки: один посетитель считается один раз от входа
-// до разбора, базисы сходятся, воронка монотонна. Fallback для старых событий без
-// session_id: audit_id → IP → id (приблизительно, уходит из окна за счёт фильтра дат).
-function identity(e: EventRow): string {
-  return e.meta?.session_id ?? e.audit_id ?? e.meta?.ip ?? e.id;
-}
-
-interface LeadRow {
-  id: string;
-  audit_id: string | null;
-  phone: string | null;
-  telegram: string | null;
-  email: string | null;
-  channel: string | null;
-  status: string | null;
-  created_at: string;
 }
 
 // Мелкая KPI-карточка (часть C). accent — оксблад-число для сигнальных метрик
@@ -126,11 +73,9 @@ export default async function AdminPage({
 
   const sp = await searchParams;
   const period = PERIODS.some((p) => p.key === sp.period) ? sp.period! : "7d";
-  const since = sinceIso(period);
-  const periodLabel = PERIODS.find((p) => p.key === period)!.label;
+  const periodLabel = (PERIODS.find((p) => p.key === period) ?? PERIODS[1]).label;
 
-  // owner=1 → показать всё, включая мои тесты. По умолчанию (нет параметра) —
-  // фильтр «без моих тестов» ВКЛ (раздел A4).
+  // owner=1 → показать всё, включая мои тесты. По умолчанию — «без моих тестов» (A4).
   const ownerVisible = sp.owner === "1";
   const ownerCookie = (await cookies()).get("is_owner")?.value;
   const browserMarked = ownerCookie !== "off"; // помечен как мой (дефолт — да)
@@ -146,95 +91,27 @@ export default async function AdminPage({
     return `/admin?${params.toString()}`;
   };
 
-  // «Без моих тестов» прячет не только помеченные заходы, но и весь ДОТЕСТОВЫЙ шум —
-  // всё, что раньше первого события с session_id. До запуска сквозной аналитики на
-  // проде это была только хозяйка (cookie-метки тогда ещё не было). Так старые 39
-  // заходов уходят при включённом фильтре (раздел B3 / фидбек с прода).
-  let instrStart: string | null = null;
-  if (!ownerVisible) {
-    const { data: firstInstr } = await sb
-      .from("events")
-      .select("created_at")
-      .not("meta->>session_id", "is", null)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    instrStart = firstInstr?.created_at ?? null;
-  }
-  // нижняя граница выборки = позднейшая из (период, запуск аналитики)
-  const effSince = instrStart && (!since || instrStart > since) ? instrStart : since;
-  const hidingPreInstr = !ownerVisible && !!instrStart;
+  // Единый сбор статистики (хелпер — он же в AI-разборе и сравнении периодов).
+  const stats = await funnelStats({ period, ownerVisible });
+  const { funnel, maxDropIdx, maxDrop, auditMap, leadsNew, leadsEngaged, avgScore, convPct, instrStart, hidingPreInstr } = stats;
+  const landedCount = stats.landed;
+  const submittedCount = stats.submitted;
 
-  // Тянем события воронки одним запросом и считаем УНИКАЛЬНЫЕ идентичности на шаг
-  // (а не сырые события — иначе один человек, открывший разбор 5 раз, даёт 5).
-  const funnelSteps = FUNNEL.map((f) => f.step);
-  let evQuery = sb
-    .from("events")
-    .select("id, step, audit_id, meta")
-    .in("step", funnelSteps)
-    .limit(20000);
-  if (effSince) evQuery = evQuery.gte("created_at", effSince);
-  const { data: evRaw } = await evQuery;
-  const events = (evRaw ?? []) as EventRow[];
-
-  // Считаем уники на шаг. Заходы владельца (meta.is_owner) по умолчанию исключаем;
-  // попутно собираем его audit_id — чтобы спрятать и его тестовые лиды.
-  const stepSets = new Map<string, Set<string>>(funnelSteps.map((s) => [s, new Set<string>()]));
-  const ownerAuditIds = new Set<string>();
-  for (const e of events) {
-    const owned = e.meta?.is_owner === true;
-    if (owned && e.audit_id) ownerAuditIds.add(e.audit_id);
-    if (owned && !ownerVisible) continue;
-    stepSets.get(e.step)?.add(identity(e));
-  }
-  const funnel = FUNNEL.map((f) => ({ ...f, count: stepSets.get(f.step)?.size ?? 0 }));
-
-  // Самый большой обрыв между шагами (по числу потерянных людей) — подсветим: дыра.
-  let maxDropIdx = -1;
-  let maxDrop = 0;
-  for (let i = 1; i < funnel.length; i++) {
-    const drop = funnel[i - 1].count - funnel[i].count;
-    if (drop > maxDrop) {
-      maxDrop = drop;
-      maxDropIdx = i;
-    }
-  }
-
-  let leadsQuery = sb
-    .from("leads")
-    .select("id, audit_id, phone, telegram, email, channel, status, created_at")
-    .order("created_at", { ascending: false })
-    .limit(100);
-  if (effSince) leadsQuery = leadsQuery.gte("created_at", effSince);
-  const { data: leadsRaw } = await leadsQuery;
-  let leads = (leadsRaw ?? []) as LeadRow[];
-  if (!ownerVisible) leads = leads.filter((l) => !(l.audit_id && ownerAuditIds.has(l.audit_id)));
-
-  const auditIds = leads.map((l) => l.audit_id).filter((x): x is string => !!x);
-  const leadIds = leads.map((l) => l.id);
-
-  const auditMap = new Map<string, { site_type: string | null; score: number | null }>();
-  if (auditIds.length) {
-    const { data: audits } = await sb.from("audits").select("id, site_type, result").in("id", auditIds);
-    for (const a of audits ?? []) {
-      const r = a.result as { overall_score?: number } | null;
-      auditMap.set(a.id, { site_type: a.site_type ?? null, score: r?.overall_score ?? null });
-    }
-  }
-
-  // Сортировка (часть D). Дефолт — новые сверху (выборка уже date desc). По баллу —
-  // низкий сверху: горячие (балл <50) первыми, без балла — в конец.
+  // Сортировка лидов (часть D) — на уровне страницы (зависит от ?sort).
+  let leads = stats.leads;
   if (sort === "score") {
     leads = [...leads].sort((a, b) => {
       const sa = a.audit_id ? auditMap.get(a.audit_id)?.score ?? null : null;
-      const sb = b.audit_id ? auditMap.get(b.audit_id)?.score ?? null : null;
-      if (sa === null) return sb === null ? 0 : 1;
-      if (sb === null) return -1;
-      return sa - sb;
+      const sbb = b.audit_id ? auditMap.get(b.audit_id)?.score ?? null : null;
+      if (sa === null) return sbb === null ? 0 : 1;
+      if (sbb === null) return -1;
+      return sa - sbb;
     });
   }
 
+  // Доставки лидам — для колонки «Отправлено».
   const sentMap = new Map<string, string[]>();
+  const leadIds = leads.map((l) => l.id);
   if (leadIds.length) {
     const { data: logs } = await sb.from("emails_log").select("lead_id, channel, type, status").in("lead_id", leadIds);
     for (const log of logs ?? []) {
@@ -245,16 +122,37 @@ export default async function AdminPage({
     }
   }
 
-  // ── KPI за период (часть C). Всё из уже загруженных данных, без новых запросов. ──
-  const leadsNew = leads.filter((l) => !l.status || l.status === "new").length;
-  const leadsEngaged = leads.filter((l) => ["engaged", "replied", "client"].includes(l.status ?? "")).length;
-  const landedCount = funnel[0].count;
-  const submittedCount = funnel.find((f) => f.step === "contact_submitted")?.count ?? 0;
-  const convPct = landedCount > 0 ? Math.round((submittedCount / landedCount) * 100) : null;
-  const scores = leads
-    .map((l) => (l.audit_id ? auditMap.get(l.audit_id)?.score : null))
-    .filter((x): x is number => typeof x === "number");
-  const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+  // Последний AI-разбор статистики (кэш, часть E) — показываем, пока не нажали заново.
+  const { data: lastAnalysis } = await sb
+    .from("events")
+    .select("meta, created_at")
+    .eq("step", "admin_analysis")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const analysis = (lastAnalysis?.meta ?? null) as
+    | { text?: string; cost_cents?: number; model?: string; period_label?: string }
+    | null;
+  const analysisAt = lastAnalysis?.created_at ?? null;
+  const dataThin = landedCount < config.marketerThinLanded; // мало данных → не гнать заново впустую
+
+  // Форма запуска AI-разбора (server-action). subtle — приглушённый вариант при малых данных.
+  const reanalyze = (label: string, subtle: boolean) => (
+    <form action={runMarketerAnalysis} className={subtle ? "inline" : ""}>
+      <input type="hidden" name="period" value={period} />
+      <input type="hidden" name="owner" value={ownerVisible ? "1" : "0"} />
+      <SubmitButton
+        pendingText={subtle ? "разбираю…" : "Разбираю…"}
+        className={
+          subtle
+            ? "font-sans text-espresso/45 underline underline-offset-2 hover:text-oxblood disabled:opacity-60"
+            : "inline-block border border-oxblood bg-oxblood px-4 py-2 font-sans text-sm font-medium text-paper transition-colors hover:bg-oxblood-deep disabled:opacity-60"
+        }
+      >
+        {label}
+      </SubmitButton>
+    </form>
+  );
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -475,6 +373,41 @@ export default async function AdminPage({
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="mt-12">
+        <Tag>AI-разбор статистики</Tag>
+        {analysis?.text ? (
+          <div className="mt-4">
+            <div className="border border-espresso/15 bg-paper-2/40 p-5">
+              <AnalysisText text={analysis.text} />
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-sans text-xs text-espresso/45">
+              <span title={analysisAt ? new Date(analysisAt).toLocaleString("ru-RU") : ""}>
+                сделано {analysisAt ? relTime(analysisAt) : "—"}
+              </span>
+              {analysis.period_label && <span>за «{analysis.period_label}»</span>}
+              <span>стоил ≈{(analysis.cost_cents ?? 0).toFixed(2)}¢</span>
+              {analysis.model && <span>{analysis.model}</span>}
+            </div>
+            {dataThin ? (
+              <p className="mt-3 font-sans text-xs text-espresso/45">
+                Данных пока мало — разбор не изменится, гонять заново смысла нет. {reanalyze("всё равно разобрать заново", true)}
+              </p>
+            ) : (
+              <div className="mt-4">{reanalyze("Разобрать заново", false)}</div>
+            )}
+          </div>
+        ) : (
+          <div className="mt-4">
+            <p className="font-sans text-sm text-espresso/55">
+              {dataThin
+                ? "Данных пока мало — разбор будет короткий, но первый прогон можно сделать."
+                : "AI-маркетолог разберёт воронку: где теряешь людей, что это значит и что чинить первым."}
+            </p>
+            <div className="mt-3">{reanalyze("Разобрать статистику", false)}</div>
+          </div>
+        )}
       </section>
     </main>
   );

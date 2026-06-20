@@ -59,6 +59,29 @@ export async function createJsonResponse(params: {
   return { text: resp.output_text ?? "", usage };
 }
 
+/**
+ * Запрос с ТЕКСТОВЫМ ответом (прозой, без json-формата) через Responses API.
+ * Для AI-разбора статистики (часть E) — ответ должен быть живым текстом, не JSON.
+ */
+export async function createTextResponse(params: {
+  model: string;
+  system: string;
+  userText: string;
+}): Promise<JsonResponse> {
+  const resp = await getOpenAI().responses.create({
+    model: params.model,
+    input: [
+      { role: "system", content: params.system },
+      { role: "user", content: [{ type: "input_text", text: params.userText }] },
+    ],
+  });
+
+  const usage = resp.usage
+    ? { prompt: resp.usage.input_tokens ?? 0, completion: resp.usage.output_tokens ?? 0 }
+    : null;
+  return { text: resp.output_text ?? "", usage };
+}
+
 /** Достаёт первый JSON-объект из текста ответа (на случай обёрток/```json). */
 export function extractJson(text: string): unknown {
   const trimmed = text.trim();
