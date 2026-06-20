@@ -2,6 +2,7 @@ import Link from "next/link";
 import UrlForm from "@/components/UrlForm";
 import StickyCta from "@/components/StickyCta";
 import SiteJsonLd from "@/components/SiteJsonLd";
+import Faq from "@/components/Faq";
 import Tag from "@/components/ui/Tag";
 import Reveal from "@/components/ui/Reveal";
 
@@ -192,6 +193,20 @@ export default function Home() {
               </div>
             ))}
           </div>
+        </section>
+      </Reveal>
+
+      {/* FAQ под боль клиента — для людей и нейропоиска (answer-first + FAQPage schema) */}
+      <Reveal className={`${WRAP} mt-32 sm:mt-40`}>
+        <section>
+          <h2 className="font-display font-extrabold leading-[1.0] text-ink" style={{ fontSize: "clamp(2rem, 4vw, 3.5rem)" }}>
+            Частые вопросы
+          </h2>
+          <p className="mt-5 max-w-2xl font-sans text-lg leading-relaxed text-ink-soft">
+            <span className="font-semibold text-ink">Razbor — это бесплатный сервис, который по ссылке проверяет сайт и показывает, почему он не приносит заявки.</span>{" "}
+            За пару минут даёт разбор по 8 направлениям и план, что чинить первым.
+          </p>
+          <Faq />
         </section>
       </Reveal>
 
