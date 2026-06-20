@@ -15,12 +15,19 @@ const FUNNEL: { step: string; label: string }[] = [
   { step: "report_viewed", label: "Открыли разбор" },
 ];
 
-async function stepCount(step: string): Promise<number> {
-  const { count } = await getSupabase()
-    .from("events")
-    .select("*", { count: "exact", head: true })
-    .eq("step", step);
-  return count ?? 0;
+// Сырая строка события для подсчёта уников. meta.ip кладёт /api/events на каждое
+// событие, поэтому анонимные ранние шаги (landed/url_entered) дедуплятся по IP.
+interface EventRow {
+  id: string;
+  step: string;
+  audit_id: string | null;
+  meta: { ip?: string } | null;
+}
+
+// Уникальная идентичность события: один прогон аудита (audit_id) для средних/поздних
+// шагов, IP для анонимных ранних, id как последний fallback (старые события без ip).
+function identity(e: EventRow): string {
+  return e.audit_id ?? e.meta?.ip ?? e.id;
 }
 
 interface LeadRow {
@@ -37,8 +44,19 @@ interface LeadRow {
 export default async function AdminPage() {
   const sb = getSupabase();
 
-  const counts = await Promise.all(FUNNEL.map((f) => stepCount(f.step)));
-  const funnel = FUNNEL.map((f, i) => ({ ...f, count: counts[i] }));
+  // Тянем события воронки одним запросом и считаем УНИКАЛЬНЫЕ идентичности на шаг
+  // (а не сырые события — иначе один человек, открывший разбор 5 раз, даёт 5).
+  const funnelSteps = FUNNEL.map((f) => f.step);
+  const { data: evRaw } = await sb
+    .from("events")
+    .select("id, step, audit_id, meta")
+    .in("step", funnelSteps)
+    .limit(20000);
+  const events = (evRaw ?? []) as EventRow[];
+
+  const stepSets = new Map<string, Set<string>>(funnelSteps.map((s) => [s, new Set<string>()]));
+  for (const e of events) stepSets.get(e.step)?.add(identity(e));
+  const funnel = FUNNEL.map((f) => ({ ...f, count: stepSets.get(f.step)?.size ?? 0 }));
 
   const { data: leadsRaw } = await sb
     .from("leads")
@@ -78,12 +96,12 @@ export default async function AdminPage() {
       </header>
 
       <section className="mt-8">
-        <Tag>Воронка (всё время)</Tag>
+        <Tag>Воронка · уникальные посетители · всё время</Tag>
         <div className="mt-4 space-y-1">
           {funnel.map((f, i) => {
             const prev = i > 0 ? funnel[i - 1].count : f.count;
-            const conv = prev > 0 ? Math.round((f.count / prev) * 100) : 100;
-            const widthPct = funnel[0].count > 0 ? Math.round((f.count / funnel[0].count) * 100) : 0;
+            const conv = prev > 0 ? Math.min(100, Math.round((f.count / prev) * 100)) : 100;
+            const widthPct = funnel[0].count > 0 ? Math.min(100, Math.round((f.count / funnel[0].count) * 100)) : 0;
             return (
               <div key={f.step} className="flex items-center gap-3">
                 <div className="w-44 shrink-0 font-sans text-sm text-espresso/80">{f.label}</div>
