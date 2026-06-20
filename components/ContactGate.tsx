@@ -7,7 +7,6 @@ import { track } from "@/lib/client-events";
 // Гейт-форма (Flow B): контакт открывает полный разбор + PDF + подарок.
 // Turnstile здесь не нужен — бот-защита уже была на старте аудита.
 export default function ContactGate({ auditId, onUnlocked }: { auditId: string; onUnlocked: () => void }) {
-  const [contact, setContact] = useState("");
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -29,8 +28,8 @@ export default function ContactGate({ auditId, onUnlocked }: { auditId: string; 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!contact.trim()) {
-      setError("Укажите телефон или телеграм.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("Укажите корректную почту.");
       return;
     }
     if (!consent) {
@@ -42,7 +41,7 @@ export default function ContactGate({ auditId, onUnlocked }: { auditId: string; 
       const res = await fetch("/api/lead", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ auditId, contact, email: email || null, consent }),
+        body: JSON.stringify({ auditId, email: email.trim(), consent }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -62,22 +61,16 @@ export default function ContactGate({ auditId, onUnlocked }: { auditId: string; 
     <form onSubmit={onSubmit} className="border-t-2 border-oxblood pt-8">
       <h3 className="font-display text-2xl font-extrabold text-ink sm:text-3xl">Открыть полный разбор</h3>
       <p className="mt-3 max-w-lg font-sans text-ink-soft">
-        Оставьте контакт — откроем разбор по всем направлениям, отдадим PDF и подарок «Где сайт
-        теряет заявки».
+        Оставьте почту — откроем разбор по всем направлениям и пришлём его на почту. А чек-лист
+        «Где сайт теряет заявки» заберёте в Telegram.
       </p>
 
-      <div className="mt-6 max-w-lg space-y-3">
-        <input
-          type="text"
-          placeholder="Телефон или @телеграм"
-          value={contact}
-          onChange={(e) => setContact(e.target.value)}
-          disabled={busy}
-          className="w-full border-[1.5px] border-ink bg-transparent px-4 py-3 font-sans text-ink outline-none transition focus:border-oxblood"
-        />
+      <div className="mt-6 max-w-lg">
         <input
           type="email"
-          placeholder="E-mail (по желанию)"
+          inputMode="email"
+          autoComplete="email"
+          placeholder="Ваш e-mail"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           disabled={busy}
@@ -101,7 +94,7 @@ export default function ContactGate({ auditId, onUnlocked }: { auditId: string; 
         disabled={busy}
         className="mt-6 w-full max-w-lg bg-oxblood px-6 py-4 font-display font-bold uppercase tracking-wide text-paper transition hover:bg-oxblood-deep disabled:opacity-50"
       >
-        {busy ? "Открываю…" : "Получить разбор и подарок"}
+        {busy ? "Открываю…" : "Открыть полный разбор"}
       </button>
 
       {error && <p className="mt-3 font-sans text-sm text-oxblood">{error}</p>}

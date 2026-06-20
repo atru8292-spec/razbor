@@ -11,8 +11,7 @@ export const auditRequestSchema = z.object({
 
 export const leadRequestSchema = z.object({
   auditId: z.string().uuid(),
-  contact: z.string().min(2).max(200),
-  email: z.string().email().max(200).optional().nullable().or(z.literal("")),
+  email: z.string().email({ message: "Укажите корректную почту." }).max(200),
   consent: z.literal(true, { errorMap: () => ({ message: "Нужно согласие на обработку данных." }) }),
 });
 

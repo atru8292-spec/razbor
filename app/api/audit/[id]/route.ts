@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
 import { toTeaser, type AuditResult } from "@/lib/audit-types";
-import { giftUrl, reportUrl, telegramDeeplink } from "@/lib/delivery";
+import { telegramDeeplink } from "@/lib/delivery";
 
 export const runtime = "nodejs";
 
@@ -47,9 +47,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     if (unlocked) {
       resp.full = result;
       resp.screenshots = audit.screenshots ?? null;
+      // Подарок-чек-лист только в боте (GATE.md) — на сайт giftUrl не отдаём.
       resp.delivery = {
-        giftUrl: giftUrl(),
-        reportUrl: reportUrl(id),
         telegramDeeplink: telegramDeeplink(lead.id),
       };
     }

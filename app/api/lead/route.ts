@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { leadRequestSchema } from "@/lib/validation";
-import { normalizeContact, isContactRateLimited, getClientIp } from "@/lib/limit";
+import { isContactRateLimited, getClientIp } from "@/lib/limit";
 import { logEvent } from "@/lib/events";
 import { getSupabase } from "@/lib/supabase";
 import { deliverGift } from "@/lib/delivery";
@@ -37,10 +37,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Проверка не найдена." }, { status: 404 });
   }
 
-  const contact = normalizeContact(parsed.data.contact, parsed.data.email || null);
-  if (!contact.phone && !contact.telegram && !contact.email) {
-    return NextResponse.json({ error: "Укажите телефон или телеграм." }, { status: 400 });
-  }
+  // Короткий гейт (GATE.md): одно поле — почта. Telegram добавится автоматом в боте.
+  const email = parsed.data.email.trim().toLowerCase();
+  const contact = { phone: null, telegram: null, email, channel: "email" as const };
 
   if (await isContactRateLimited(contact)) {
     return NextResponse.json(

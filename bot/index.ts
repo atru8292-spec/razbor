@@ -10,7 +10,7 @@ import { logEvent, logBotMessage } from "../lib/events";
 
 // Касание 0 в боте (REDESIGN §9): живо, с тизером следующего касания.
 // token = lead.id; chatId сохраняем в events(tg_started) для telegram-догонов.
-export async function handleStart(token: string | undefined, chatId?: number): Promise<string> {
+export async function handleStart(token: string | undefined, chatId?: number, username?: string): Promise<string> {
   if (!token) {
     return "Это бот сервиса RAZBOR. Чтобы забрать разбор и подарок — перейдите по ссылке со страницы результата.";
   }
@@ -22,6 +22,11 @@ export async function handleStart(token: string | undefined, chatId?: number): P
   // сохраняем chat_id для будущих касаний + лог выдачи (без дублей)
   if (chatId != null) {
     await logEvent("tg_started", { auditId: lead.audit_id, leadId: lead.id, meta: { chat_id: chatId } });
+  }
+  // Короткий гейт (GATE.md): тг получаем автоматом из Telegram → второй канал у лида
+  // (почта из формы + telegram отсюда), без ручного ввода ника.
+  if (username) {
+    await getSupabase().from("leads").update({ telegram: username }).eq("id", lead.id);
   }
   const { data: already } = await getSupabase()
     .from("emails_log")
@@ -71,7 +76,7 @@ async function main() {
   bot.start(async (ctx) => {
     try {
       const token = ctx.startPayload?.trim() || undefined;
-      const reply = await handleStart(token, ctx.chat?.id);
+      const reply = await handleStart(token, ctx.chat?.id, ctx.from?.username);
       await ctx.reply(reply, { link_preview_options: { is_disabled: true } });
     } catch (e) {
       console.error("[bot] ошибка /start:", e);
