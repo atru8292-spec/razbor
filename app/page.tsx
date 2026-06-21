@@ -5,6 +5,7 @@ import SiteJsonLd from "@/components/SiteJsonLd";
 import Faq from "@/components/Faq";
 import Tag from "@/components/ui/Tag";
 import Reveal from "@/components/ui/Reveal";
+import HeroSample from "@/components/HeroSample";
 
 // Лендинг (REDESIGN §5/6): brutalism, фокус на продукте, ритм фонов (§правка).
 const OWNER = "https://t.me/arinashrr";
@@ -73,32 +74,25 @@ export default function Home() {
         </nav>
       </header>
 
-      {/* hero */}
-      <section className={`${WRAP} pt-20 sm:pt-28`}>
-        <Tag>AI-аудит за пару минут</Tag>
-        <h1 className="mt-6 font-display font-black leading-[0.95] tracking-[-0.02em] text-ink" style={{ fontSize: "clamp(3rem, 8vw, 7rem)" }}>
-          Видно, где сайт <span className="text-oxblood">теряет</span> заявки
-        </h1>
-        <p className="mt-7 max-w-[600px] font-sans text-lg leading-relaxed text-ink-soft sm:text-xl">
-          Вставьте ссылку — покажем по элементам вашего сайта, где и почему уходят клиенты.
-          С оценкой удобства, где теряете заявки, и планом, что чинить первым.
-        </p>
-        <div id="audit" className="mt-10 scroll-mt-24">
-          <UrlForm />
-          <p className="mt-3 font-sans text-sm text-ink-soft">Бесплатно. Результат за пару минут. Без регистрации.</p>
-          <div className="mt-7 max-w-lg border-t border-line pt-6">
-            <p className="font-sans text-xs uppercase tracking-[0.14em] text-ink-soft">Что получите за пару минут</p>
-            <ul className="mt-3 space-y-2 font-sans text-[0.95rem] text-ink">
-              <li className="flex gap-3">
-                <span className="font-display font-bold text-oxblood">1</span>Главную утечку — где именно сайт теряет заявки
-              </li>
-              <li className="flex gap-3">
-                <span className="font-display font-bold text-oxblood">2</span>Оценки по 8 направлениям — от первого экрана до нейропоиска
-              </li>
-              <li className="flex gap-3">
-                <span className="font-display font-bold text-oxblood">3</span>План правок по приоритету — что чинить первым
-              </li>
-            </ul>
+      {/* hero — 2 колонки: слева оффер+форма, справа живой пример результата */}
+      <section className={`${WRAP} pt-14 sm:pt-20`}>
+        <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+          <div>
+            <Tag>AI-аудит за пару минут</Tag>
+            <h1 className="mt-6 font-display font-black leading-[0.95] tracking-[-0.02em] text-ink" style={{ fontSize: "clamp(2.5rem, 6vw, 5rem)" }}>
+              Видно, где сайт <span className="text-oxblood">теряет</span> заявки
+            </h1>
+            <p className="mt-6 max-w-[520px] font-sans text-lg leading-relaxed text-ink-soft">
+              Вставьте ссылку — покажем по элементам вашего сайта, где уходят клиенты, и план, что
+              чинить первым.
+            </p>
+            <div id="audit" className="mt-8 scroll-mt-24">
+              <UrlForm />
+              <p className="mt-3 font-sans text-sm text-ink-soft">Бесплатно. Результат за пару минут. Без регистрации.</p>
+            </div>
+          </div>
+          <div className="lg:pl-2">
+            <HeroSample />
           </div>
         </div>
       </section>
