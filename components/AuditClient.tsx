@@ -108,7 +108,7 @@ export default function AuditClient({ id }: { id: string }) {
           {data.unlocked && data.full ? (
             <>
               {data.delivery && <DeliveryBlock delivery={data.delivery} pdfHref={`/api/audit/${id}/pdf`} />}
-              <FullReport result={data.full} screenshots={data.screenshots ?? {}} />
+              <FullReport result={data.full} screenshots={data.screenshots ?? {}} auditId={id} />
             </>
           ) : (
             <div className="mt-12">

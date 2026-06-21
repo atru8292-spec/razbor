@@ -15,7 +15,8 @@ export type EventStep =
   | "followup_clicked"
   | "tg_started" // пользователь открыл бота по диплинку (храним chat_id в meta)
   | "bot_message" // сообщение в боте (meta.dir in|out, meta.text) — переписка в карточке лида
-  | "admin_analysis"; // кэш AI-разбора статистики в /admin (meta.text, cost_cents, period)
+  | "admin_analysis" // кэш AI-разбора статистики в /admin (meta.text, cost_cents, period)
+  | "hero_redesign"; // кэш демо-переделки первого экрана (meta.html, changes, cost_cents)
 
 export async function logEvent(
   step: EventStep,

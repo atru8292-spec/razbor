@@ -6,6 +6,7 @@ import { SEVERITY, type Severity } from "./ui/severity";
 import ScoreGauge from "./ui/ScoreGauge";
 import LiftRadar from "./ui/LiftRadar";
 import Tag from "./ui/Tag";
+import HeroRedesign from "./HeroRedesign";
 
 const OWNER_CONTACT = process.env.NEXT_PUBLIC_OWNER_CONTACT || "https://t.me/arinashrr";
 
@@ -213,7 +214,17 @@ function FinalCta() {
   );
 }
 
-export function FullReport({ result, screenshots, print = false }: { result: AuditResult; screenshots: Screenshots; print?: boolean }) {
+export function FullReport({
+  result,
+  screenshots,
+  auditId,
+  print = false,
+}: {
+  result: AuditResult;
+  screenshots: Screenshots;
+  auditId: string;
+  print?: boolean;
+}) {
   const all = (result.areas ?? []).flatMap((a) => a.findings ?? []);
   const strengths = all.filter((f) => f.severity === "ok");
   const leaks = all.filter((f) => f.severity !== "ok").sort((a, b) => sevRank(b.severity) - sevRank(a.severity));
@@ -292,6 +303,9 @@ export function FullReport({ result, screenshots, print = false }: { result: Aud
           </ol>
         </section>
       )}
+
+      {/* Демо-переделка первого экрана (HERO-REDESIGN) — отвечает на «и что делать?» */}
+      {!print && <HeroRedesign auditId={auditId} />}
 
       {!print && <FinalCta />}
     </div>

@@ -39,7 +39,7 @@ export default async function PrintPage({ params }: { params: Promise<{ id: stri
       <div className="mt-8">
         <Teaser teaser={toTeaser(result)} />
       </div>
-      <FullReport result={result} screenshots={screenshots} print />
+      <FullReport result={result} screenshots={screenshots} auditId={id} print />
       <footer className="mt-12 border-t border-espresso/15 pt-4 font-sans text-xs text-espresso/45">
         RAZBOR — аудит сайтов · getrazbor.ru
       </footer>
