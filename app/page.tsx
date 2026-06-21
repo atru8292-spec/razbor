@@ -63,7 +63,14 @@ export default function Home() {
       <header className={`${WRAP} flex items-center justify-between border-b border-line py-5`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.svg" alt="RAZBOR" className="h-7 w-auto" />
-        <span className="font-sans text-xs uppercase tracking-[0.18em] text-ink-soft">Аудит сайтов</span>
+        <nav className="flex items-center gap-5 font-sans text-sm sm:gap-6">
+          <Link href="/blog" className="text-ink-soft transition hover:text-oxblood">
+            Блог
+          </Link>
+          <span className="hidden text-xs uppercase tracking-[0.18em] text-ink-soft sm:inline">
+            Аудит сайтов
+          </span>
+        </nav>
       </header>
 
       {/* hero */}
@@ -227,7 +234,9 @@ export default function Home() {
       <footer className={`${WRAP} flex flex-col gap-3 border-t border-line py-8 sm:flex-row sm:items-center sm:justify-between`}>
         <span className="font-display text-sm font-bold uppercase tracking-[0.3em] text-oxblood">RAZBOR</span>
         <div className="flex flex-wrap gap-x-6 gap-y-1 font-sans text-sm text-ink-soft">
-          <span>AI-аудит сайтов</span>
+          <Link href="/blog" className="hover:text-oxblood">
+            Блог
+          </Link>
           <a href={OWNER} target="_blank" rel="noopener" className="hover:text-oxblood">
             Telegram @arinashrr
           </a>
