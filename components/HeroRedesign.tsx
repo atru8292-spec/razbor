@@ -3,13 +3,12 @@
 import { useState } from "react";
 
 // Демо-переделка первого экрана (HERO-REDESIGN.md). По клику — генерация из готового
-// аудита, превью в sandboxed iframe (без скриптов), объяснения «было/стало/почему»,
-// CTA к редизайну всего сайта. Кэш на сервере; «переделать заново» = ?force=1.
+// аудита, превью в sandboxed iframe (без скриптов) с переключателем десктоп/мобайл,
+// объяснения «что сделала + почему», CTA к редизайну. Кэш на сервере; заново = ?force=1.
 const OWNER = process.env.NEXT_PUBLIC_OWNER_CONTACT || "https://t.me/arinashrr";
 
 interface Change {
-  было?: string;
-  стало?: string;
+  что?: string;
   почему?: string;
 }
 
@@ -18,6 +17,7 @@ export default function HeroRedesign({ auditId }: { auditId: string }) {
   const [html, setHtml] = useState("");
   const [changes, setChanges] = useState<Change[]>([]);
   const [error, setError] = useState("");
+  const [view, setView] = useState<"desktop" | "mobile">("desktop");
 
   async function run(force = false) {
     setState("loading");
@@ -60,7 +60,7 @@ export default function HeroRedesign({ auditId }: { auditId: string }) {
     return (
       <section className="mt-16 border-t-2 border-oxblood pt-10">
         <p className="font-display text-lg font-extrabold text-ink">Переделываю ваш первый экран…</p>
-        <p className="mt-2 font-sans text-sm text-ink-soft">Думаю как дизайнер — обычно это занимает около 15 секунд.</p>
+        <p className="mt-2 font-sans text-sm text-ink-soft">≈ 15 секунд.</p>
       </section>
     );
   }
@@ -68,20 +68,36 @@ export default function HeroRedesign({ auditId }: { auditId: string }) {
   // Готово: превью + объяснения + CTA
   return (
     <section className="mt-16 border-t-2 border-oxblood pt-10">
-      <h3 className="font-display text-2xl font-extrabold text-ink sm:text-3xl">Вот как мог бы выглядеть ваш первый экран</h3>
-
-      <div className="mt-6 overflow-hidden border border-line shadow-[0_8px_30px_rgba(78,0,0,0.06)]">
-        <div className="border-b border-line bg-paper-2 px-4 py-2 font-sans text-xs uppercase tracking-wide text-ink-soft">
-          Переделанный первый экран
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h3 className="font-display text-2xl font-extrabold text-ink sm:text-3xl">Вот как мог бы выглядеть ваш первый экран</h3>
+        {/* переключатель — проверить, что переделка хороша и на телефоне */}
+        <div className="flex gap-1 border border-line p-1">
+          {(["desktop", "mobile"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView(v)}
+              className={`px-3 py-1 font-sans text-xs font-medium transition-colors ${
+                view === v ? "bg-ink text-paper" : "text-ink-soft hover:text-ink"
+              }`}
+            >
+              {v === "desktop" ? "Десктоп" : "Телефон"}
+            </button>
+          ))}
         </div>
-        {/* sandbox без allow-scripts: чужой HTML ничего не выполнит, только разметка + стили */}
-        <iframe
-          sandbox=""
-          srcDoc={html}
-          title="Переделанный первый экран"
-          loading="lazy"
-          className="h-[600px] w-full border-0 bg-white"
-        />
+      </div>
+
+      <div className="mt-6 border border-line bg-paper-2 p-3 shadow-[0_8px_30px_rgba(78,0,0,0.06)] sm:p-5">
+        <div className={view === "mobile" ? "mx-auto w-[390px] max-w-full" : "w-full"}>
+          {/* sandbox без allow-scripts: чужой HTML ничего не выполнит, только разметка + стили */}
+          <iframe
+            sandbox=""
+            srcDoc={html}
+            title="Переделанный первый экран"
+            loading="lazy"
+            className={`w-full border border-line bg-white ${view === "mobile" ? "h-[680px]" : "h-[600px]"}`}
+          />
+        </div>
       </div>
 
       {changes.length > 0 && (
@@ -92,13 +108,8 @@ export default function HeroRedesign({ auditId }: { auditId: string }) {
               <li key={i} className="flex gap-4">
                 <span className="font-display text-xl font-black leading-none text-oxblood">{i + 1}</span>
                 <div className="max-w-2xl font-sans text-[1.0625rem] leading-relaxed">
-                  {c.почему && <p className="text-ink">{c.почему}</p>}
-                  {(c.было || c.стало) && (
-                    <p className="mt-1 text-sm text-ink-soft">
-                      {c.было && <>Было: {c.было}. </>}
-                      {c.стало && <>Стало: {c.стало}.</>}
-                    </p>
-                  )}
+                  {c.что && <p className="font-semibold text-ink">{c.что}</p>}
+                  {c.почему && <p className="mt-0.5 text-ink-soft">{c.почему}</p>}
                 </div>
               </li>
             ))}
