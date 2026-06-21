@@ -16,7 +16,13 @@ export const metadata: Metadata = {
     siteName: "Razbor",
     title: "Блог Razbor — почему сайты теряют заявки",
     description: "Разбираем, почему сайт не приносит заявки и как это починить. Простым языком.",
-    images: [{ url: "/example-report.png", width: 1200, height: 630, alt: "Блог Razbor" }],
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: "RAZBOR — видно, где сайт теряет заявки" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Блог Razbor — почему сайты теряют заявки",
+    description: "Разбираем, почему сайт не приносит заявки и как это починить. Простым языком.",
+    images: [{ url: "/og.png", alt: "RAZBOR — видно, где сайт теряет заявки" }],
   },
 };
 

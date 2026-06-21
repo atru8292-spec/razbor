@@ -22,6 +22,7 @@ export async function generateMetadata({
   const post = getPost(slug);
   if (!post) return {};
   const url = `/blog/${slug}`;
+  const ogImage = `${SITE}${url}/og`; // бренд-карточка с заголовком статьи (абсолютный https)
   return {
     title: post.title,
     description: post.description,
@@ -34,13 +35,13 @@ export async function generateMetadata({
       title: post.title,
       description: post.description,
       publishedTime: post.date,
-      images: [{ url: "/example-report.png", width: 1200, height: 630, alt: post.title }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: post.title }],
     },
     twitter: {
       card: "summary_large_image",
       title: post.title,
       description: post.description,
-      images: ["/example-report.png"],
+      images: [{ url: ogImage, alt: post.title }],
     },
   };
 }
