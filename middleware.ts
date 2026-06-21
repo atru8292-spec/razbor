@@ -41,10 +41,22 @@ function markOwnerIfAbsent(req: NextRequest, res: NextResponse): void {
   res.cookies.set(OWNER_COOKIE, "1", cookieOpts);
 }
 
+// 301-редиректы устаревших URL на актуальные (анти-каннибализация контента,
+// content-plan v2). sajt-est-a-klientov-net слит в пиллар как разделы — старый
+// slug ведём на пиллар, чтобы не терять ссылки и вес. Постоянный (301).
+const REDIRECTS_301: Record<string, string> = {
+  "/blog/sajt-est-a-klientov-net": "/blog/pochemu-sajt-ne-prinosit-zayavki",
+};
+
 // Basic-auth для /admin (раздел 14). Пара берётся из ADMIN_USER/ADMIN_PASSWORD.
 // ВАЖНО: значения инлайнятся при сборке — .env должен содержать их ДО `npm run build`.
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  const redirectTo = REDIRECTS_301[pathname];
+  if (redirectTo) {
+    return NextResponse.redirect(new URL(redirectTo, req.url), 301);
+  }
 
   if (pathname.startsWith("/admin")) {
     const user = process.env.ADMIN_USER;
@@ -83,5 +95,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/a/:path*", "/admin", "/admin/:path*"],
+  matcher: ["/", "/a/:path*", "/admin", "/admin/:path*", "/blog/sajt-est-a-klientov-net"],
 };
