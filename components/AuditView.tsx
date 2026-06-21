@@ -146,6 +146,14 @@ function AreaAccordion({ area, forceOpen }: { area: Area; forceOpen: boolean }) 
       </button>
       <div className={`grid transition-[grid-template-rows] duration-300 ${open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
         <div className="overflow-hidden">
+          {/* Вступление для нейропоиска — объясняем, о чём речь, тем кто не в теме (#7) */}
+          {area.key === "aeo" && (
+            <p className="max-w-2xl py-4 font-sans text-[0.95rem] leading-relaxed text-ink-soft">
+              Люди всё чаще спрашивают не поисковик, а нейросеть: «посоветуй, где заказать / куда сходить». Нейросеть
+              читает сайты и советует те, что поняла. Если ваш сайт ей непонятен — вас не порекомендуют, и клиент уходит
+              к конкуренту, даже не дойдя до вас.
+            </p>
+          )}
           <div className="divide-y divide-line pb-2">
             {leaks.length ? leaks.map((f, i) => <FindingCard key={i} f={f} />) : <p className="py-4 font-sans text-sm text-ink-soft">Серьёзных проблем не нашли.</p>}
           </div>
