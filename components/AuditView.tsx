@@ -59,11 +59,11 @@ export function Teaser({ teaser }: { teaser: AuditTeaser }) {
         <ScoreGauge label="ИИ-видимость" value={teaser.aeo_score} />
       </div>
 
-      <div className="mt-16 grid gap-10 md:grid-cols-[1fr_340px] md:items-start">
+      <div className="mt-16 grid gap-10 md:grid-cols-[1fr_320px] md:items-start lg:gap-16">
         <div>
           <Tag>Главная утечка</Tag>
-          <p className="mt-4 font-display text-3xl font-extrabold leading-[1.05] text-ink sm:text-4xl">{first}</p>
-          {restText && <p className="mt-4 max-w-xl font-sans text-lg leading-relaxed text-ink-soft">{restText}</p>}
+          <p className="mt-4 max-w-3xl font-display text-3xl font-extrabold leading-[1.05] text-ink sm:text-4xl">{first}</p>
+          {restText && <p className="mt-4 max-w-2xl font-sans text-lg leading-relaxed text-ink-soft">{restText}</p>}
         </div>
         <div className="justify-self-center">
           <LiftRadar lift={teaser.lift} />
@@ -239,8 +239,11 @@ export function FullReport({
 
   return (
     <div className="mt-24">
+      {/* Демо-переделка первого экрана — сразу после главной утечки (проблема → решение → детали) */}
+      {!print && <HeroRedesign auditId={auditId} />}
+
       {strengths.length > 0 && (
-        <section>
+        <section className="mt-24">
           <Tag>Что работает</Tag>
           <ul className="mt-5 space-y-3">
             {strengths.map((f, i) => (
@@ -311,9 +314,6 @@ export function FullReport({
           </ol>
         </section>
       )}
-
-      {/* Демо-переделка первого экрана (HERO-REDESIGN) — отвечает на «и что делать?» */}
-      {!print && <HeroRedesign auditId={auditId} />}
 
       {!print && <FinalCta />}
     </div>
